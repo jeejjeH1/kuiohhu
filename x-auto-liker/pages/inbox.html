@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>صندوق منشن — X Auto Liker</title>
+  <link rel="stylesheet" href="../fonts/fonts.css">
+  <link rel="stylesheet" href="page.css">
+  <style>
+    .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+    .chip { border: 1px solid var(--card-b); background: var(--card); color: var(--muted); padding: 6px 13px; border-radius: 99px; cursor: pointer; font-weight: 700; font-size: 13px; }
+    .chip.on { background: var(--grad); color: #fff; border-color: transparent; }
+    .chip b { font-weight: 700; opacity: .8; margin-inline-start: 4px; }
+    .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .bar select { height: 36px; border-radius: 12px; border: 1px solid var(--card-b); background: var(--card); padding: 0 10px; }
+    .bar label { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); font-size: 13px; cursor: pointer; }
+    .list { display: flex; flex-direction: column; gap: 12px; max-width: 820px; }
+    .msg { padding: 16px; border-radius: 20px; background: var(--card); border: 1px solid var(--card-b); animation: rise .45s var(--ease) both; }
+    .msg.done { opacity: .5; }
+    .msg .head { display: flex; align-items: center; gap: 10px; }
+    .msg .head img { width: 36px; height: 36px; border-radius: 50%; background: #222; }
+    .msg .head b { display: block; line-height: 1.3; }
+    .msg .head span { font-size: 12px; color: var(--muted); direction: ltr; unicode-bidi: isolate; }
+    .kind { margin-inline-start: auto; font-size: 11.5px; padding: 2px 10px; border-radius: 99px; background: rgba(42, 212, 255, .12); color: #9fe9ff; white-space: nowrap; }
+    .kind.priority { background: rgba(255, 46, 126, .15); color: #ffb3d0; }
+    .kind.question { background: rgba(162, 75, 255, .16); color: #d6b8ff; }
+    .kind.thanks { background: rgba(47, 227, 154, .14); color: #a6f5d2; }
+    .msg .tx { margin: 10px 0; white-space: pre-wrap; unicode-bidi: plaintext; text-align: start; }
+    .msg .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+    .msg .acts button, .msg .acts a { height: 32px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--card-b); background: rgba(255, 255, 255, .05); color: inherit; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; font-size: 13px; }
+    .msg .acts button:hover, .msg .acts a:hover { background: rgba(255, 255, 255, .12); }
+    .sugg { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .opt { padding: 12px; border-radius: 14px; background: rgba(255, 255, 255, .04); border: 1px solid var(--card-b); }
+    .opt p { white-space: pre-wrap; unicode-bidi: plaintext; text-align: start; }
+    .opt small { display: block; color: var(--muted); margin-top: 4px; unicode-bidi: plaintext; }
+    .opt .acts { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+    .opt .acts button { height: 30px; padding: 0 11px; border-radius: 9px; border: 0; background: var(--grad); color: #fff; cursor: pointer; font-size: 12.5px; font-weight: 700; }
+    .opt .acts button.ghost { background: rgba(255, 255, 255, .08); }
+    .note { color: var(--muted); padding: 30px; text-align: center; }
+    .err { color: #ffb3c1; margin-top: 8px; font-size: 13px; }
+    .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--card-b); padding: 10px 18px; border-radius: 14px; z-index: 9; }
+  </style>
+</head>
+<body>
+  <div class="aurora"><i></i><i></i></div>
+  <div class="wrap">
+    <header class="top">
+      <div class="logo">📥</div>
+      <div><h1>صندوق منشن</h1><p>منشن‌ها و جواب‌هایی که روی صفحه‌ی اعلان‌های X دیده‌اید، دسته‌بندی‌شده. فقط روی همین مرورگر.</p></div>
+    </header>
+    <div class="tabs" id="tabs"></div>
+    <div class="bar">
+      <label><input type="checkbox" id="onlyOpen" checked> فقط انجام‌نشده‌ها</label>
+      <select id="tone" title="لحن پیشنهاد پاسخ">
+        <option value="دوستانه و گرم">لحن: دوستانه</option>
+        <option value="رسمی و مؤدب">لحن: رسمی</option>
+        <option value="خیلی کوتاه، یک یا دو جمله">لحن: کوتاه</option>
+        <option value="طنز ملایم و سبک">لحن: طنز ملایم</option>
+        <option value="تشکر صمیمی">لحن: تشکر</option>
+      </select>
+      <button class="chip" id="clearDone">پاک کردن انجام‌شده‌ها</button>
+    </div>
+    <main id="list" class="list"></main>
+  </div>
+  <script src="../i18n-dict.js"></script>
+  <script src="../i18n.js"></script>
+  <script src="inbox.js"></script>
+</body>
+</html>

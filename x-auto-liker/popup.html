@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <title>X Auto Liker</title>
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <!-- animated aurora backdrop -->
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+  <canvas id="fx" aria-hidden="true"></canvas>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="g-main" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#ff2e7e"/><stop offset=".55" stop-color="#a24bff"/><stop offset="1" stop-color="#2ad4ff"/>
+      </linearGradient>
+      <linearGradient id="g-heart" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ff5ea0"/><stop offset="1" stop-color="#e0105e"/>
+      </linearGradient>
+      <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 21.2s-7.6-4.6-9.9-9.3C.6 8.7 2.4 4.8 6.1 4.4c2.1-.2 3.9.9 5.9 3 2-2.1 3.8-3.2 5.9-3 3.7.4 5.5 4.3 4 7.5-2.3 4.7-9.9 9.3-9.9 9.3z"/></symbol>
+    </defs>
+  </svg>
+
+  <header class="top">
+    <div class="logo">
+      <svg class="logo-heart"><use href="#i-heart" fill="url(#g-heart)"/></svg>
+      <span class="logo-ring"></span>
+    </div>
+    <div class="brand">
+      <h1>X Auto Liker</h1>
+      <p>لایک خودکار، نوبت به نوبت</p>
+    </div>
+    <button id="langBtn" class="lang-btn" data-no-i18n title="Language / زبان">EN</button>
+    <div id="pill" class="pill"><span class="dot"></span><span id="pillText">آماده</span></div>
+  </header>
+
+  <nav class="navtabs" id="navtabs">
+    <button data-tab="like" class="on">❤ لایک نوبتی</button>
+    <button data-tab="tools">🧰 ابزارها</button>
+    <i class="nav-glider"></i>
+  </nav>
+
+  <main class="views">
+    <!-- ───────── SETUP ───────── -->
+    <section id="viewSetup" class="view is-active">
+      <div class="modes" id="modes" style="--d:0">
+        <button class="mode is-on" data-mode="manual"><b>دستی</b><span>خودت لایک می‌کنی</span></button>
+        <button class="mode" data-mode="auto"><b>خودکار</b><span>خودش لایک می‌کنه</span></button>
+        <i class="mode-glider"></i>
+      </div>
+
+      <div class="card" style="--d:0">
+        <div class="card-head">
+          <h2>لینک‌ها <button id="clear" class="ghost-btn" title="پاک کردن همه">پاک کن</button></h2>
+          <div class="counter" id="counter">
+            <b id="count">۰</b><span>/ ۳۰</span>
+            <div class="counter-bar"><i id="countBar"></i></div>
+          </div>
+        </div>
+        <div class="ta-wrap">
+          <textarea id="links" dir="ltr" spellcheck="false" wrap="off"
+            placeholder="کل پیام را اینجا بچسبانید…&#10;x.com/intent/like?tweet_id=…&#10;x.com/user/status/…"></textarea>
+        </div>
+        <div id="warn" class="warn"></div>
+      </div>
+
+      <div class="card" id="manualCard" style="--d:1">
+        <div class="card-head"><h2>حالت دستی</h2><span class="est safe">بدون کلیک خودکار</span></div>
+        <ol class="steps">
+          <li><i>۱</i>لینک را باز می‌کند</li>
+          <li><i>♥</i>شما لایک می‌کنید</li>
+          <li><i>۲</i>«بعدی» را می‌زنید <kbd>Alt+N</kbd></li>
+        </ol>
+        <label class="toggle">
+          <input id="autoNext" type="checkbox">
+          <span class="knob"></span>
+          بعد از لایکِ من، خودش برود بعدی
+        </label>
+        <label class="toggle" style="margin-top:10px">
+          <input id="closeTabManual" type="checkbox" checked>
+          <span class="knob"></span>
+          بستن تب در پایان کار
+        </label>
+      </div>
+
+      <div class="card" id="autoCard" style="--d:1">
+        <div class="card-head"><h2>زمان‌بندی</h2><span class="est" id="est"></span></div>
+
+        <div class="setting">
+          <div class="setting-label">
+            <span class="sw sw-read"></span>
+            صبر بعد از باز شدن، قبل از لایک
+            <output id="preOut"></output>
+          </div>
+          <div class="range" id="preRange" dir="ltr" style="--c:#2ad4ff">
+            <div class="track"><div class="fill"></div></div>
+            <input type="range" class="lo" min="0" max="30" step="1" aria-label="حداقل صبر قبل از لایک">
+            <input type="range" class="hi" min="0" max="30" step="1" aria-label="حداکثر صبر قبل از لایک">
+          </div>
+        </div>
+
+        <div class="setting">
+          <div class="setting-label">
+            <span class="sw sw-wait"></span>
+            فاصله بین هر لایک
+            <output id="delayOut"></output>
+          </div>
+          <div class="range" id="delayRange" dir="ltr" style="--c:#a24bff">
+            <div class="track"><div class="fill"></div></div>
+            <input type="range" class="lo" min="1" max="120" step="1" aria-label="حداقل فاصله">
+            <input type="range" class="hi" min="1" max="120" step="1" aria-label="حداکثر فاصله">
+          </div>
+        </div>
+
+        <!-- motion preview of one cycle -->
+        <div class="timeline" id="timeline" dir="ltr" aria-hidden="true">
+          <div class="seg seg-open"><span>باز</span></div>
+          <div class="seg seg-read"><span>صبر</span></div>
+          <div class="seg seg-like"><svg><use href="#i-heart"/></svg></div>
+          <div class="seg seg-wait"><span>فاصله</span></div>
+          <div class="runner"></div>
+        </div>
+
+        <label class="toggle">
+          <input id="closeTab" type="checkbox" checked>
+          <span class="knob"></span>
+          بستن تب در پایان کار
+        </label>
+      </div>
+
+      <button id="start" class="cta" style="--d:2">
+        <span class="cta-shine"></span>
+        <svg><use href="#i-heart"/></svg>
+        <span id="startText">شروع</span>
+      </button>
+    </section>
+
+    <!-- ───────── TOOLS ───────── -->
+    <section id="viewTools" class="view">
+      <div class="card" style="--d:0">
+        <div class="card-head"><h2>روی صفحه‌ی X</h2><span class="est">روشن / خاموش</span></div>
+        <label class="toggle tool"><input type="checkbox" data-tool="persianFont"><span class="knob"></span><span><b>فونت فارسی زیبا</b><small>متن فارسی با وزیرمتن</small></span></label>
+        <label class="toggle tool"><input type="checkbox" data-tool="rtlFix"><span class="knob"></span><span><b>جهت درست متن فارسی</b><small>راست‌چین شدن توییت‌هایی که با @ یا لینک شروع می‌شوند</small></span></label>
+        <label class="toggle tool"><input type="checkbox" data-tool="tweetMenu"><span class="knob"></span><span><b>دکمه‌ی ✦ زیر هر توییت</b><small>دانلود عکس و ویدیو، عکس از توییت، تلگرام، پوشه، رشته</small></span></label>
+        <label class="toggle tool"><input type="checkbox" data-tool="translate"><span class="knob"></span><span><b>دکمه‌ی ترجمه زیر توییت‌ها</b><small>ترجمه‌ی فارسی توییت‌های غیرفارسی (با کلید OpenRouter)</small></span></label>
+        <label class="toggle tool"><input type="checkbox" data-tool="composer"><span class="knob"></span><span><b>دستیار نوشتن</b><small>قالب‌ها، پیش‌نویس‌ها و شمارنده‌ی دقیق کاراکتر</small></span></label>
+      </div>
+      <div class="tiles" style="--d:1">
+        <button class="tile" data-open="pages/library.html"><i>📚</i><b>کتابخانه</b><small>پوشه‌ها، قالب‌ها، پیش‌نویس‌ها</small></button>
+        <button class="tile" data-open="pages/sorsa.html"><i>🏅</i><b>امتیاز Sorsa</b><small>نمایش امتیاز روی پروفایل‌ها (با کلید شما)</small></button>
+        <button class="tile" data-open="pages/inbox.html"><i>📥</i><b>صندوق منشن</b><small>جواب‌های دریافتی، دسته‌بندی و پیشنهاد پاسخ با لحن شما</small></button>
+        <button class="tile" data-open="pages/analytics.html"><i>📊</i><b>آمار توییت‌ها</b><small>بهترین ساعت و روز انتشار</small></button>
+        <button class="tile" id="openManage"><i>👥</i><b>مدیریت دنبال‌شوندگان</b><small>همگام‌سازی، فیلتر، آنفالو، چه کسی آنفالو کرد</small></button>
+        <button class="tile" id="openPro"><i>⭐</i><b>Pro (نمایشی)</b><small>نسخه‌ی رایگان و Pro</small></button>
+        <button class="tile" id="openBackup"><i>💾</i><b>پشتیبان‌گیری</b><small>ذخیره و بازگرداندن همه‌ی داده‌ها</small></button>
+        <button class="tile" id="openAi"><i>💬</i><b>کامنت هوشمند</b><small>کلید، مدل و پرامپت</small></button>
+        <button class="tile" data-open="pages/library.html?tab=templates"><i>✦</i><b>قالب‌های متن</b><small>متن‌های پرتکرار شما</small></button>
+      </div>
+      <p class="hint-line" style="--d:2" id="toolsHint">برای «عکس از توییت» و دانلود، روی دکمه‌ی ✦ زیر هر توییت در X بزنید.</p>
+    </section>
+
+    <!-- ───────── MANAGE (following manager, embedded) ───────── -->
+    <section id="viewManage" class="view">
+      <button id="manageBack" class="manage-back" title="بازگشت">→ بازگشت به ابزارها</button>
+      <iframe id="manageFrame" title="مدیریت دنبال‌شوندگان"></iframe>
+    </section>
+
+    <!-- ───────── RUN ───────── -->
+    <section id="viewRun" class="view">
+      <div class="stage">
+        <svg class="rings" viewBox="0 0 220 220">
+          <circle class="r-track" cx="110" cy="110" r="100"/>
+          <circle id="ringTotal" class="r-total" cx="110" cy="110" r="100" pathLength="1000"/>
+          <circle class="r-track thin" cx="110" cy="110" r="84"/>
+          <circle id="ringPhase" class="r-phase" cx="110" cy="110" r="84" pathLength="1000"/>
+          <g class="orbit"><circle cx="110" cy="26" r="4"/></g>
+        </svg>
+        <div class="core">
+          <svg id="bigHeart" class="big-heart"><use href="#i-heart"/></svg>
+          <div id="phaseNum" class="phase-num"></div>
+          <div id="phaseLabel" class="phase-label"></div>
+        </div>
+      </div>
+
+      <div class="progress-line">
+        <span id="progText"></span>
+        <span id="statusText" class="status-text"></span>
+      </div>
+
+      <div class="stats">
+        <div class="stat s-liked"><b id="stLiked">۰</b><span id="stLikedLabel">لایک شد</span></div>
+        <div class="stat s-already"><b id="stAlready">۰</b><span id="stAlreadyLabel">از قبل</span></div>
+        <div class="stat s-error"><b id="stError">۰</b><span>خطا</span></div>
+      </div>
+
+      <ol id="queue" class="queue"></ol>
+
+      <div class="run-actions">
+        <button id="next" class="cta small" hidden><span class="cta-shine"></span><span id="nextText">بعدی</span><kbd>Alt+N</kbd></button>
+        <button id="stop" class="stop-btn">توقف</button>
+        <button id="back" class="cta small" hidden><span class="cta-shine"></span><span>لیست جدید</span></button>
+      </div>
+    </section>
+  </main>
+
+  <script src="i18n-dict.js"></script>
+  <script src="i18n.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+{
+  "manifest_version": 3,
+  "name": "X Auto Liker",
+  "version": "7.6.0",
+  "description": "جعبه‌ابزار فارسی X: لایک نوبتی، کامنت هوشمند، فونت فارسی، دانلود، عکس از توییت، پوشه‌بندی، قالب متن، آمار و مدیریت دنبال‌شوندگان.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyRKYXtnKhKfkKvx6tuJPENmKNo/DpIxOfTG0kAkucf68PmxaRb9+JPOy7q5ODsnF96wF+bCnBgar7eQ5uU7VVRaW7r3sXypUWddzBVt2aAnQN+8+OXP6wWLE6lDtn1wIMPn7/PCFSzpbENDBre3cfEAHNwKm2Mno0VE1pSksGeYK2E7NV4fN0TIkYqV1ZFk81A/TxMhMhFrbPqPKnA/0zctX3FZSwa4jeiMSR/nN5rNmtta1gRKS9dHQI6TH/H2QfZRnmuAAMrOOkFxS/e8fgPAiItsGlUXpBnQSAcuIpg6NeAXZSKM2fbjeKG2BGoJDbXHUWODAbMNqe8IkTNxPPQIDAQAB",
+  "permissions": [
+    "tabs",
+    "scripting",
+    "storage",
+    "downloads"
+  ],
+  "host_permissions": [
+    "https://x.com/*",
+    "https://twitter.com/*",
+    "https://api.x.com/*",
+    "https://api.twitter.com/*",
+    "https://mobile.twitter.com/*",
+    "https://pbs.twimg.com/*",
+    "https://abs.twimg.com/*",
+    "https://video.twimg.com/*",
+    "https://openrouter.ai/*",
+    "https://api.sorsa.io/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://x.com/*",
+        "https://twitter.com/*",
+        "https://mobile.twitter.com/*"
+      ],
+      "js": [
+        "content/media-hook.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://x.com/*",
+        "https://twitter.com/*",
+        "https://mobile.twitter.com/*"
+      ],
+      "js": [
+        "i18n-dict.js",
+        "i18n.js",
+        "content/common.js",
+        "content/persian.js",
+        "content/tweet-tools.js",
+        "content/card.js",
+        "content/composer.js",
+        "content/analytics-collect.js",
+        "content/sync.js",
+        "content/comments.js",
+        "content/translate.js",
+        "content/audience.js",
+        "content/mentions.js",
+        "content/sorsa.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "fonts/*.woff2"
+      ],
+      "matches": [
+        "https://x.com/*",
+        "https://twitter.com/*",
+        "https://mobile.twitter.com/*"
+      ]
+    }
+  ],
+  "commands": {
+    "next-link": {
+      "suggested_key": {
+        "default": "Alt+N"
+      },
+      "description": "حالت دستی: رفتن به لینک بعدی"
+    }
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "X Auto Liker"
+  }
+}

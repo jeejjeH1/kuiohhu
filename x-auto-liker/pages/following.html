@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <title>مدیریت دنبال‌شوندگان — X Auto Liker</title>
+  <link rel="stylesheet" href="../fonts/fonts.css">
+  <link rel="stylesheet" href="page.css">
+  <link rel="stylesheet" href="dark.css">
+  <style>
+    .tabs.big { margin-bottom: 14px; }
+    .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
+    .chip.on { background: rgba(255,46,126,.18); border-color: rgba(255,46,126,.6); }
+    .num { width: 84px; background: rgba(0,0,0,.35); border: 1px solid var(--card-b); border-radius: 10px; padding: 7px 9px; color: #eee; font: inherit; }
+    select.sel { background: rgba(0,0,0,.35); border: 1px solid var(--card-b); border-radius: 10px; padding: 7px 9px; color: #eee; font: inherit; }
+    .u { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 12px; cursor: pointer; }
+    .u:hover { background: rgba(255,255,255,.04); }
+    .u input[type=checkbox] { width: 17px; height: 17px; accent-color: #ff79b0; flex: none; }
+    .u img { width: 40px; height: 40px; border-radius: 50%; background: #222; object-fit: cover; flex: none; }
+    .u .main { flex: 1; min-width: 0; }
+    .u .nm { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; unicode-bidi: plaintext; text-align: right; }
+    .u .hd { color: #8a8a8a; font-weight: 400; direction: ltr; unicode-bidi: isolate; }
+    .u .bio { color: #8a8a8a; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; unicode-bidi: plaintext; text-align: right; }
+    .u .meta { text-align: left; font-size: 12px; color: #8a8a8a; white-space: nowrap; direction: rtl; }
+    .u .meta b { color: #eee; font-size: 13px; }
+    .tag2 { font-size: 11px; padding: 1px 8px; border-radius: 99px; }
+    .tag2.mut { color: #ff79b0; background: rgba(255,46,126,.12); }
+    .tag2.nb { color: #9a9a9a; background: rgba(255,255,255,.06); }
+    .star { border: 0; background: none; cursor: pointer; font-size: 17px; }
+    .banner { font-size: 12.5px; color: #ffd28a; background: rgba(255,173,31,.1); border: 1px solid rgba(255,173,31,.35); border-radius: 12px; padding: 9px 12px; margin: 10px 0; }
+    /* inside the extension window */
+    body.embed .wrap { padding: 8px 14px 24px; max-width: none; }
+    body.embed header.top { margin-bottom: 10px; gap: 10px; }
+    body.embed header.top .logo { display: none; }
+    body.embed header.top h1 { font-size: 17px; }
+    body.embed .kpi b { font-size: 22px; }
+    body.embed .hero { font-size: 26px; }
+    body.embed #list { max-height: 34vh !important; }
+    body.embed header.top p { display: none; }
+    body.embed header.top { margin-bottom: 6px; }
+    body.embed .tabs.big { margin-bottom: 8px; }
+    body.embed .kpis { margin: 8px 0; gap: 8px; }
+    body.embed .kpi { padding: 9px 12px; }
+    body.embed .kpi b { font-size: 20px; }
+    body.embed .card { padding: 12px; }
+    body.embed .bar { margin-top: 8px; padding: 8px 10px; }
+  </style>
+</head>
+<body>
+  <div class="aurora"><i></i><i></i></div>
+  <div class="wrap">
+    <header class="top">
+      <div class="logo">👥</div>
+      <div><h1>مدیریت دنبال‌شوندگان</h1><p id="syncInfo">هنوز همگام‌سازی نشده</p></div>
+      <div class="row" style="margin-inline-start:auto">
+        <button class="btn" id="syncBtn">🔄 همگام‌سازی از X</button>
+      </div>
+    </header>
+
+    <div class="tabs big" id="tabs" style="display:inline-flex">
+      <button data-tab="following" class="on">دنبال‌شوندگان</button>
+      <button data-tab="followers">دنبال‌کنندگان</button>
+      <button data-tab="unfollowed">چه کسی آنفالو کرد</button>
+    </div>
+    <div class="banner" id="banner" hidden></div>
+    <div class="card" id="meBox" hidden style="margin-bottom:12px">
+      <b>نام کاربری X شما</b>
+      <p class="muted" style="font-size:12.5px;margin:4px 0 10px">اکستنشن نتوانست حسابتان را خودکار پیدا کند (در نسخه‌ی موبایل رایج است). نام کاربری یا لینک پروفایلتان را بنویسید.</p>
+      <div class="row"><input type="text" id="meInput" dir="ltr" placeholder="@username  یا  x.com/username" style="flex:1;min-width:200px;background:rgba(0,0,0,.35);border:1px solid var(--card-b);border-radius:12px;padding:10px 12px;color:#eee;font:inherit"><button class="btn" id="meSave">ذخیره</button></div>
+    </div>
+    <div class="card" id="syncBox" hidden style="margin-bottom:12px">
+      <div class="row" style="justify-content:space-between">
+        <div><b id="syncTitle">در حال همگام‌سازی…</b><div class="muted" style="font-size:12.5px" id="syncDetail"></div></div>
+        <button class="btn danger sm" id="syncStop">■ توقف</button>
+      </div>
+      <div class="bar2" style="margin-top:10px"><i id="syncBar" style="width:12%"></i></div>
+    </div>
+    <div class="card" id="diagBox" hidden style="margin-bottom:12px">
+      <div class="row" style="justify-content:space-between"><b>🔎 تشخیص آخرین همگام‌سازی</b><button class="btn ghost sm" id="diagCopy">کپی برای ارسال به من</button></div>
+      <ol id="diagList" style="margin:10px 18px 0;padding:0;font-size:13px;line-height:2"></ol>
+    </div>
+
+    <section id="empty" class="card" style="text-align:center;padding:40px 20px" hidden>
+      <div style="font-size:42px">🔄</div>
+      <h2 style="margin:8px 0 4px">اول فهرست را از X بخوانید</h2>
+      <p class="muted" style="max-width:520px;margin:0 auto 14px">دکمه‌ی «همگام‌سازی از X» صفحه‌ی خودتان را در X باز می‌کند و فهرست را چند حساب در هر مرحله و با مکث می‌خواند. فقط خواندن است.</p>
+      <p class="muted" style="font-size:12.5px">اتصال ندارید یا نمی‌خواهید با X ارتباط بگیرد؟ <a href="archive.html" style="color:#ff79b0">از فایل آرشیو X</a> استفاده کنید.</p>
+    </section>
+
+    <section id="main" hidden>
+      <div class="kpis">
+        <div class="card kpi"><b id="kA">۰</b><span id="kAl">دنبال می‌کنید</span></div>
+        <div class="card kpi"><b id="kB" style="color:#ff79b0">۰</b><span id="kBl">دوطرفه</span></div>
+        <div class="card kpi"><b id="kC">۰</b><span id="kCl">فالوبک نداده‌اند</span></div>
+      </div>
+
+      <div id="filterBox" class="card">
+        <div class="row" style="margin-bottom:6px">
+          <input type="search" id="q" placeholder="جستجو در نام، شناسه، بیو…" style="flex:1;min-width:200px;background:rgba(0,0,0,.35);border:1px solid var(--card-b);border-radius:12px;padding:10px 12px;color:#eee;font:inherit">
+          <label class="switch" id="protectWrap"><input type="checkbox" id="protect" checked><i></i>محافظت از دوطرفه‌ها</label>
+        </div>
+        <div class="filters" id="chips">
+          <span class="chip" data-f="verified">☑ تیک آبی</span><span class="chip" data-f="notVerified">بدون تیک</span>
+          <span class="chip" data-f="noPosts">بدون هیچ پست</span><span class="chip" data-f="noAvatar">👤 بدون عکس</span>
+          <span class="chip" data-f="noBio">بدون بیو</span><span class="chip" data-f="locked">🔒 قفل</span>
+        </div>
+        <div class="filters">
+          <span class="muted">دنبال‌کننده‌ی آن حساب:</span>
+          <input class="num" type="number" id="fmin" min="0" placeholder="حداقل"> تا <input class="num" type="number" id="fmax" min="0" placeholder="حداکثر">
+          <span class="muted" style="margin-right:10px">موقعیت:</span><input class="num" style="width:110px" type="text" id="loc" placeholder="مثلاً تهران">
+          <span class="muted" style="margin-right:10px">سن حساب (سال) حداکثر:</span><input class="num" type="number" id="age" min="0" step="1" placeholder="—" style="width:70px">
+          <span class="muted" style="margin-right:10px">مرتب‌سازی:</span>
+          <select class="sel" id="sort">
+            <option value="fol-asc">کمترین دنبال‌کننده</option><option value="fol-desc">بیشترین دنبال‌کننده</option>
+            <option value="new">جدیدترین حساب</option><option value="old">قدیمی‌ترین حساب</option><option value="name">نام</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row" style="justify-content:space-between;padding:10px 4px 6px">
+        <span class="muted" style="font-size:12.5px" id="count"></span>
+        <span class="row" style="gap:6px"><button class="btn ghost sm" id="all">انتخاب همه</button><button class="btn ghost sm" id="none">هیچ‌کدام</button><button class="btn ghost sm" id="copy">کپی شناسه‌ها</button><button class="btn ghost sm" id="csv">CSV</button></span>
+      </div>
+      <div class="list" id="list" style="background:rgba(0,0,0,.35);border:1px solid var(--card-b);max-height:52vh"></div>
+
+      <div class="bar" id="actions" >
+        <b id="sel">۰ انتخاب‌شده</b>
+        <button class="btn" id="manual" style="margin-right:auto">آنفالو دستی (یکی‌یکی)</button>
+        <button class="btn ghost" id="auto">آنفالو خودکار…</button>
+      </div>
+      <div class="note" id="autoWarn" hidden>آنفالوی خودکار و انبوه خلاف قوانین X است و می‌تواند باعث محدود شدن حساب شود. با فاصله‌ی زیاد و سقف پایین استفاده کنید. حالت دستی امن‌تر است.</div>
+      <div class="row" id="autoCfg" hidden style="padding:0;margin-top:10px">
+        <span>فاصله بین هر آنفالو (ثانیه):</span>
+        <input type="number" id="mn" min="20" value="30" style="width:80px"> تا <input type="number" id="mx" min="20" value="60" style="width:80px">
+        <span>سقف روزانه:</span><input type="number" id="cap" min="1" max="50" value="20" style="width:80px">
+        <button class="btn sm" id="go">شروع</button>
+      </div>
+
+      <section class="card" id="runPanel" hidden style="margin-top:14px">
+        <div class="row" style="justify-content:space-between">
+          <div><b style="font-size:15px" id="runTitle">در حال آنفالو</b><div class="muted" style="font-size:12.5px" id="runSub"></div></div>
+          <div class="row" style="gap:6px"><button class="btn ghost sm" id="pauseBtn">⏸ مکث</button><button class="btn danger sm" id="stopBtn">■ توقف</button></div>
+        </div>
+        <div class="kpis" style="margin:12px 0 8px">
+          <div class="card kpi"><b id="runDone">۰</b><span>آنفالو شده در این اجرا</span></div>
+          <div class="card kpi"><b id="runToday">۰</b><span id="runCapText">امروز از سقف</span></div>
+          <div class="card kpi"><b id="runErr" style="color:#ff79b0">۰</b><span>خطا</span></div>
+        </div>
+        <div class="bar2"><i id="runBar"></i></div>
+      </section>
+    </section>
+  </div>
+  <script src="../i18n-dict.js"></script>
+  <script src="../i18n.js"></script>
+  <script src="following.js"></script>
+  <script src="runpanel.js"></script>
+</body>
+</html>

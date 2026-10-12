@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <title>پشتیبان‌گیری — X Auto Liker</title>
+  <link rel="stylesheet" href="../fonts/fonts.css">
+  <link rel="stylesheet" href="page.css">
+  <link rel="stylesheet" href="dark.css">
+  <style>
+    .wrap { max-width: 720px; }
+    .item { display: flex; align-items: center; gap: 10px; padding: 8px 4px; }
+    .item input { width: 17px; height: 17px; accent-color: var(--accent); }
+    .item small { color: var(--muted); margin-right: auto; }
+    body.embed .wrap { padding: 8px 14px 24px; max-width: none; }
+    body.embed header.top p, body.embed header.top .logo { display: none; }
+  </style>
+</head>
+<body>
+  <div class="aurora"><i></i><i></i></div>
+  <div class="wrap">
+    <header class="top"><div class="logo">💾</div><div><h1>پشتیبان‌گیری</h1><p>همه‌ی داده‌های اکستنشن را در یک فایل ذخیره کنید و هر وقت لازم شد برگردانید.</p></div></header>
+
+    <section class="card">
+      <h2>چرا لازم است؟</h2>
+      <p class="muted" style="font-size:13px;margin-top:4px">اگر مرورگر اکستنشن را پاک کند (مثلاً بعد از پاک شدن کش در اندروید)، همه‌ی داده‌هایش هم می‌رود. با یک فایل پشتیبان، بعد از نصب دوباره همه‌چیز برمی‌گردد.</p>
+    </section>
+
+    <section class="card" style="margin-top:14px">
+      <h2>ذخیره‌ی پشتیبان</h2>
+      <div id="items" style="margin:8px 0 12px"></div>
+      <div class="row"><button class="btn" id="export">⬇ ساخت فایل پشتیبان</button><span class="muted" style="font-size:12.5px" id="size"></span></div>
+      <div class="note" id="keyNote" hidden>فایل پشتیبان شامل کلید OpenRouter شما می‌شود. آن را جای عمومی نگذارید.</div>
+    </section>
+
+    <section class="card" style="margin-top:14px">
+      <h2>برگرداندن پشتیبان</h2>
+      <p class="muted" style="font-size:13px;margin:4px 0 10px">فایل <span dir="ltr">x-auto-liker-backup.json</span> را انتخاب کنید. داده‌های همان بخش‌ها جایگزین می‌شوند.</p>
+      <div class="row"><input type="file" id="file" accept=".json,application/json"><span id="msg" style="font-size:13px"></span></div>
+    </section>
+  </div>
+  <script src="../i18n-dict.js"></script>
+  <script src="../i18n.js"></script>
+  <script src="backup.js"></script>
+</body>
+</html>

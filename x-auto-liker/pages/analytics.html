@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <title>آمار توییت‌ها — X Auto Liker</title>
+  <link rel="stylesheet" href="../fonts/fonts.css">
+  <link rel="stylesheet" href="page.css">
+  <style>
+    :root { --series: #ff2e7e; --grid: rgba(255, 255, 255, .07); --axis: #6d6789; }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 14px; }
+    .kpi b { display: block; font-size: 30px; font-weight: 900; line-height: 1.2; font-variant-numeric: tabular-nums; }
+    .kpi span { color: var(--muted); font-size: 12.5px; }
+    .insights { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 14px; }
+    .ins { display: flex; gap: 12px; align-items: center; }
+    .ins i { font-style: normal; font-size: 22px; width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: rgba(255, 255, 255, .06); flex: none; }
+    .ins b { display: block; }
+    .charts { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 14px; }
+    @media (max-width: 860px) { .charts { grid-template-columns: 1fr; } }
+    .chart { position: relative; }
+    .chart svg { display: block; width: 100%; overflow: visible; direction: ltr; }
+    .tip { position: absolute; pointer-events: none; padding: 8px 12px; border-radius: 12px; background: #1a1630; border: 1px solid rgba(255, 255, 255, .14);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, .5); font-size: 12.5px; white-space: nowrap; opacity: 0; transform: translateY(4px); transition: opacity .15s, transform .15s; z-index: 3; }
+    .tip.show { opacity: 1; transform: none; }
+    .tip b { display: block; font-size: 15px; }
+    details { margin-top: 10px; font-size: 12.5px; }
+    details summary { cursor: pointer; color: var(--muted); }
+    table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+    th, td { padding: 9px 10px; text-align: start; border-bottom: 1px solid rgba(255, 255, 255, .06); }
+    th { color: var(--muted); font-weight: 500; font-size: 12.5px; cursor: pointer; user-select: none; white-space: nowrap; }
+    th.sorted { color: var(--text); }
+    td.num, th.num { text-align: left; direction: ltr; }
+    tr:hover td { background: rgba(255, 255, 255, .03); }
+    .txt { max-width: 380px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; unicode-bidi: plaintext; }
+    .vbar { display: inline-block; height: 6px; border-radius: 0 4px 4px 0; background: var(--series); vertical-align: middle; margin-left: 8px; opacity: .85; }
+    a { color: inherit; }
+  </style>
+</head>
+<body>
+  <div class="aurora"><i></i><i></i></div>
+  <div class="wrap">
+    <header class="top">
+      <div class="logo">📊</div>
+      <div><h1>آمار توییت‌های من</h1><p id="sub"></p></div>
+      <div class="row" style="margin-inline-start:auto" id="metric">
+        <span class="chip on" data-m="views">بازدید</span><span class="chip" data-m="likes">لایک</span><span class="chip" data-m="er">نرخ تعامل</span>
+      </div>
+    </header>
+    <main id="main"></main>
+  </div>
+  <script src="../i18n-dict.js"></script>
+  <script src="../i18n.js"></script>
+  <script src="analytics.js"></script>
+</body>
+</html>

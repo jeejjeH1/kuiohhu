@@ -1,0 +1,64 @@
+/* Follow-manager pages: the same look as the extension window (aurora, glass cards, pink→violet→cyan). */
+[hidden] { display: none !important; }
+:root { --accent: #ff2e7e; --accent-soft: #ff79b0; }
+
+/* header: logo ring + gradient title, like the popup */
+header.top .logo { position: relative; background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.12); }
+header.top .logo::after { content: ""; position: absolute; inset: -1px; border-radius: 14px; padding: 1.5px; background: var(--grad);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: spin 7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+header.top h1 { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; background-size: 200% 100%; animation: hue 7s linear infinite; }
+@keyframes hue { to { background-position: -200% 0; } }
+
+/* tabs: same pill + glowing active as the library page and the popup mode switch */
+.tabs { display: inline-flex; gap: 4px; padding: 4px; border-radius: 14px; background: var(--card); border: 1px solid var(--card-b); }
+.tabs button { border: 0; background: none; color: var(--muted); padding: 8px 16px; border-radius: 10px; cursor: pointer; font: 700 13px Vazirmatn, sans-serif; transition: color .3s, background .35s, box-shadow .35s; }
+.tabs button:hover { color: var(--text); }
+.tabs button.on { background: var(--grad); color: #fff; box-shadow: 0 6px 16px rgba(255,46,126,.3); }
+
+.hero { font: 900 40px/1.15 Vazirmatn, sans-serif; margin: 6px 0 4px; letter-spacing: -.5px; }
+.hero em { font-style: normal; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* number cards: glass with a colored base line, like the popup stats */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 14px 0; }
+.kpi { position: relative; overflow: hidden; padding: 14px 16px; }
+.kpi::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--sc, var(--violet)); box-shadow: 0 0 10px var(--sc, var(--violet)); }
+.kpis .kpi:nth-child(1) { --sc: var(--cyan); }
+.kpis .kpi:nth-child(2) { --sc: var(--violet); }
+.kpis .kpi:nth-child(3) { --sc: var(--pink); }
+.kpi b { display: block; font-size: 28px; font-weight: 900; }
+.kpi span { color: var(--muted); font-size: 12.5px; }
+
+/* switch: the popup's gradient toggle */
+.switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13px; color: var(--text); user-select: none; }
+.switch input { display: none; }
+.switch i { width: 38px; height: 22px; border-radius: 22px; background: rgba(255,255,255,.12); position: relative; transition: background .35s; flex: none; }
+.switch i::after { content: ""; position: absolute; top: 3px; right: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.4); transition: transform .45s var(--spring); }
+.switch input:checked + i { background: var(--grad); }
+.switch input:checked + i::after { transform: translateX(-16px); }
+
+/* lists and rows */
+.list { max-height: 50vh; overflow: auto; border-radius: 18px; background: rgba(0,0,0,.3); border: 1px solid var(--card-b); padding: 6px; margin-top: 10px; scrollbar-width: thin; }
+.row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 12px; cursor: pointer; }
+.row:hover { background: rgba(255,255,255,.05); }
+.row input, .u input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--accent); flex: none; }
+.row .id { direction: ltr; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 12.5px; }
+.chip.on { background: rgba(255,46,126,.16); border-color: rgba(255,46,126,.55); }
+
+/* action bar and progress: glass, gradient fill */
+.bar { position: sticky; bottom: 0; margin-top: 14px; padding: 12px; border-radius: 18px; background: rgba(12,10,22,.85); border: 1px solid var(--card-b); backdrop-filter: blur(14px); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; box-shadow: 0 -10px 30px rgba(0,0,0,.35); }
+.bar2 { height: 6px; border-radius: 6px; background: rgba(255,255,255,.08); overflow: hidden; }
+.bar2 i { display: block; height: 100%; width: 0; background: var(--grad); border-radius: 6px; transition: width .5s var(--ease); }
+.note { font-size: 12.5px; color: #ffd28a; background: rgba(255,173,31,.1); border: 1px solid rgba(255,173,31,.35); border-radius: 12px; padding: 10px 12px; margin-top: 12px; }
+
+/* import cards (archive page) */
+.drop { border: 1.5px dashed rgba(255,255,255,.18); border-radius: 18px; padding: 18px; text-align: center; transition: .3s; cursor: pointer; position: relative; }
+.drop:hover, .drop.over { border-color: rgba(255,46,126,.6); background: rgba(255,46,126,.06); }
+.drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.drop.done { border-style: solid; border-color: rgba(47,227,154,.5); }
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.steps ol { padding-right: 18px; color: var(--muted); font-size: 13px; }
+
+/* inside the extension window the popup's own background shows through */
+html.embed, body.embed { background: transparent; }
+body.embed .aurora { display: none; }

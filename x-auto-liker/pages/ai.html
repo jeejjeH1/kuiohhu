@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <title>کامنت هوشمند — X Auto Liker</title>
+  <link rel="stylesheet" href="../fonts/fonts.css">
+  <link rel="stylesheet" href="page.css">
+  <link rel="stylesheet" href="dark.css">
+  <style>
+    .wrap { max-width: 760px; }
+    label.f { display: block; font-weight: 700; margin: 16px 0 6px; }
+    .hint { color: var(--muted); font-size: 12.5px; margin-bottom: 8px; }
+    .inp { width: 100%; background: rgba(0,0,0,.35); border: 1px solid var(--card-b); border-radius: 12px; padding: 10px 12px; color: var(--text); font: inherit; outline: none; }
+    .inp:focus { border-color: rgba(162,75,255,.7); box-shadow: 0 0 0 3px rgba(162,75,255,.18); }
+    textarea.inp { min-height: 190px; resize: vertical; line-height: 1.8; }
+    .ph { cursor: pointer; font-size: 12px; padding: 2px 10px; border-radius: 99px; background: rgba(42,212,255,.12); color: #9fe9ff; border: 0; direction: ltr; font-family: monospace; }
+    .ph:hover { background: rgba(42,212,255,.22); }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 560px) { .two { grid-template-columns: 1fr; } }
+    #status { min-height: 22px; font-size: 13px; margin-top: 8px; }
+    .ok { color: var(--green); } .err { color: #ff8a95; }
+    body.embed .wrap { padding: 8px 14px 24px; max-width: none; }
+    body.embed header.top p { display: none; }
+    body.embed header.top .logo { display: none; }
+  </style>
+</head>
+<body>
+  <div class="aurora"><i></i><i></i></div>
+  <div class="wrap">
+    <header class="top">
+      <div class="logo">💬</div>
+      <div><h1>کامنت هوشمند</h1><p>برای هر توییت ۱۰ کامنت با ترجمه‌ی فارسی؛ شما یکی را انتخاب می‌کنید و خودتان ارسال می‌کنید.</p></div>
+    </header>
+
+    <section class="card">
+      <label class="f" for="key" style="margin-top:0">کلید OpenRouter</label>
+      <div class="hint">از openrouter.ai/keys یک کلید بسازید. کلید فقط روی همین مرورگر ذخیره می‌شود و فقط به OpenRouter فرستاده می‌شود، نه به X.</div>
+      <div class="row"><input class="inp" id="key" type="password" dir="ltr" placeholder="sk-or-v1-…" style="flex:1" autocomplete="off"><button class="btn ghost sm" id="eye" title="نمایش">👁</button><button class="btn sm" id="test">تست کلید</button></div>
+      <div id="status"></div>
+
+      <label class="f" for="model">مدل</label>
+      <div class="hint">«خودکار» بهترین مدل رایگانِ همین امروز را از لیست زنده‌ی OpenRouter انتخاب می‌کند و اگر مدلی خطا داد سراغ بعدی می‌رود. می‌توانید دستی هم یکی را انتخاب کنید.</div>
+      <div class="row"><select class="inp" id="model" dir="ltr" style="flex:1"><option value="auto">auto — بهترین مدل رایگان (پیشنهادی)</option></select><button class="btn ghost sm" id="reload">🔄 لیست مدل‌ها</button></div>
+
+      <div class="two">
+        <div><label class="f" for="count">تعداد کامنت</label><input class="inp" id="count" type="number" min="3" max="15" value="10"></div>
+        <div><label class="f" for="lang">زبان کامنت‌ها</label>
+          <select class="inp" id="lang"><option value="auto">همان زبان توییت</option><option value="en">همیشه انگلیسی</option><option value="fa">همیشه فارسی</option></select></div>
+      </div>
+      <label class="f" for="temp">خلاقیت: <b id="tv"></b></label>
+      <input id="temp" type="range" min="0.2" max="1.3" step="0.1" style="width:100%">
+    </section>
+
+    <section class="card" style="margin-top:14px">
+      <div class="row" style="justify-content:space-between"><b style="font-size:15px">✏️ پرامپت</b><button class="btn ghost sm" id="reset">بازگشت به پیش‌فرض</button></div>
+      <div class="hint" style="margin-top:6px">این متن را هر طور می‌خواهید تغییر بدهید (لحن، قواعد، شخصیت). این‌ها را می‌توانید داخلش بگذارید:</div>
+      <div class="row" style="margin-bottom:8px"><button class="ph" data-ph="{{tweet}}">{{tweet}}</button><button class="ph" data-ph="{{author}}">{{author}}</button><button class="ph" data-ph="{{count}}">{{count}}</button><button class="ph" data-ph="{{lang}}">{{lang}}</button></div>
+      <textarea class="inp" id="prompt"></textarea>
+      <div class="hint" style="margin-top:8px">قالب خروجی (آرایه‌ی JSON با متن کامنت و ترجمه‌ی فارسی) خودکار به انتهای پرامپت اضافه می‌شود؛ لازم نیست خودتان بنویسید. اگر {{tweet}} را ننویسید، متن توییت زیر پرامپت اضافه می‌شود.</div>
+    </section>
+
+    <div class="row" style="margin-top:14px"><button class="btn" id="save">ذخیره</button><span id="saved" class="ok" style="font-size:13px"></span></div>
+  </div>
+  <script src="../i18n-dict.js"></script>
+  <script src="../i18n.js"></script>
+  <script src="ai.js"></script>
+</body>
+</html>

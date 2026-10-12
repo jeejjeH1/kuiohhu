@@ -60,9 +60,9 @@ async function lookup() {
   box.append(el('div', 'muted', 'در حال دریافت…'));
   let r = await chrome.runtime.sendMessage({ type: 'sorsaScore', handle: h, manual: true }).catch((e) => ({ ok: false, error: e.message }));
   if (r?.ok && r.score !== null && r.score !== undefined) {
-    box.lastChild.textContent = 'در حال دریافت تغییرات و برترین دنبال‌کننده‌ها از Sorsa… (چند ثانیه)';
+    box.lastChild.textContent = 'در حال دریافت تغییرات، اسمارت فالوورها و برترین دنبال‌کننده‌ها از Sorsa… (چند ثانیه)';
     const d = await chrome.runtime.sendMessage({ type: 'sorsaDetails', handle: h }).catch(() => null);
-    if (d?.ok) r = { ...r, week: d.week, month: d.month, top: d.top };
+    if (d?.ok) r = { ...r, week: d.week, month: d.month, top: d.top, stats: d.stats };
   }
   const top = r?.top?.length ? { ok: true, users: r.top } : { ok: false, error: 'برترین دنبال‌کننده‌ها پیدا نشد. می‌توانید آن را در خود Sorsa ببینید.' };
   box.textContent = '';
@@ -80,7 +80,14 @@ async function lookup() {
   for (const [label, v] of [['تغییر هفتگی', r.week], ['تغییر ماهانه', r.month]]) {
     const b = el('div', 'sc-box'); b.append(el('small', '', label), el('b', dcls(v), delta(v))); grid.append(b);
   }
-  box.append(head, bar, ticks, grid, el('h2', '', 'برترین دنبال‌کننده‌ها'));
+  const st = r.stats;
+  const sh = el('h2', '', 'اسمارت فالوورها ');
+  if (st) sh.append(el('span', 'sm-sum', `★ ${fmt(['influencers', 'projects', 'vcs'].reduce((n, k) => n + (st[k] || 0), 0), 0)}`));
+  const g3 = el('div', 'sc-grid sc-g3');
+  for (const [label, k] of [['اینفلوئنسر', 'influencers'], ['پروژه', 'projects'], ['VC', 'vcs']]) {
+    const b = el('div', 'sc-box'); b.append(el('small', '', label), el('b', '', st && st[k] !== null && st[k] !== undefined ? fmt(st[k], 0) : '—')); g3.append(b);
+  }
+  box.append(head, bar, ticks, grid, sh, g3, el('h2', '', 'برترین دنبال‌کننده‌ها'));
   if (!top?.ok) { box.append(el('div', 'muted', top?.error || 'خطا')); debugBox(box); return; }
   if (!top.users) return;
   if (!top.users.length) { box.append(el('div', 'muted', 'دنبال‌کننده‌ی امتیازداری پیدا نشد.')); return; }

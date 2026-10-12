@@ -652,9 +652,31 @@ function sorsaSeries(list) {
   };
   return { week: at(7), month: at(30) };
 }
+// Sorsa's "smart followers": how many crypto influencers, projects and VCs follow the account. The API calls them
+// influencers_count / projects_count / venture_capitals_count; the site may use shorter names or a category list.
+const SORSA_KINDS = { influencers: /^influencers?(_?count)?$/i, projects: /^projects?(_?count)?$/i, vcs: /^(venture_?capitals?|vcs?)(_?count)?$/i };
+function sorsaStats(node) {
+  const st = {};
+  if (Array.isArray(node)) {
+    for (const x of node) {
+      if (!x || typeof x !== 'object') continue;
+      const name = String(x.category ?? x.type ?? x.name ?? x.label ?? x.key ?? '').toLowerCase().replace(/[\s-]+/g, '_');
+      const n = num(x.count ?? x.value ?? x.total);
+      if (!name || n === null) continue;
+      if (/influenc/.test(name)) st.influencers = n; else if (/project/.test(name)) st.projects = n; else if (/^vcs?$|venture/.test(name)) st.vcs = n;
+    }
+  } else {
+    for (const [k, v] of Object.entries(node)) {
+      const n = num(v);
+      if (n === null) continue;
+      for (const [f, re] of Object.entries(SORSA_KINDS)) if (st[f] === undefined && re.test(k)) st[f] = n;
+    }
+  }
+  return Object.keys(st).length >= 2 ? { influencers: st.influencers ?? null, projects: st.projects ?? null, vcs: st.vcs ?? null } : null;
+}
 function sorsaScan(roots, handle, { loose = false } = {}) {
   const h = handle.toLowerCase();
-  const out = { score: null, week: null, month: null, top: null };
+  const out = { score: null, week: null, month: null, top: null, stats: null };
   const isMe = (o) => [o.screen_name, o.username, o.handle].some((v) => typeof v === 'string' && v.replace(/^@/, '').toLowerCase() === h);
   const deltas = (o, lenient) => {
     for (const [k, v] of Object.entries(o)) {
@@ -684,6 +706,7 @@ function sorsaScan(roots, handle, { loose = false } = {}) {
       hint = key;
     }
     const ctx = `${hint || ''} ${pk || ''}`;
+    if (!out.stats && !(isUser(node) && !isMe(node)) && (loose || isMe(node) || ctx.toLowerCase().includes(h))) out.stats = sorsaStats(node);
     if (Array.isArray(node)) {
       const users = node.filter(isUser);
       if (users.length >= 2 && users.length >= node.length * 0.8 && users.some((u) => userScore(u) !== null) && !users.some(isMe)) lists.push({ ctx, list: users });
@@ -791,15 +814,15 @@ function sorsaRender(handle, { details = false } = {}) {
         last = v;
         const out = sorsaScan(v.log.map((x) => ({ queryKey: [x.url], state: { data: x.data } })), handle, { loose: true });
         if (out.score === null) out.score = sorsaTextScore(v.text);
-        if (out.score !== null || out.top || out.week !== null) {
-          const full = out.top?.length && out.week !== null && out.month !== null;
+        if (out.score !== null || out.top || out.week !== null || out.stats) {
+          const full = out.top?.length && out.week !== null && out.month !== null && out.stats;
           // Give the page one more round to deliver score changes / top followers, then stop (details: wait for them).
           if (full || (!details && best && best.score === out.score)) { best = out; break; }
           best = out;
         }
       }
     } finally { chrome.tabs.remove(tab.id).catch(() => {}); }
-    const missing = !best || (details && !(best.top?.length && best.week !== null && best.month !== null));
+    const missing = !best || (details && !(best.top?.length && best.week !== null && best.month !== null && best.stats));
     if (last && missing) {
       const prev = (await chrome.storage.local.get('sorsaDebug')).sorsaDebug || {};
       await chrome.storage.local.set({ sorsaDebug: { ...(prev.handle === handle ? prev : { handle }), rendered: { url: last.url, at: Date.now(), found: best,
@@ -835,6 +858,10 @@ async function sorsaApi(key, handle) {
   if (!s.ok) return s;
   const d = c.ok && c.data ? c.data : {};
   return { ok: true, score: sorsaPick(s.data), week: num(d.week_delta), month: num(d.month_delta) };
+}
+async function sorsaStatsApi(key, handle) {
+  const r = await sorsaGet(key, 'followers-stats', handle);
+  return r.ok && r.data ? { ok: true, stats: sorsaStats(r.data) } : r;
 }
 async function sorsaTopApi(key, handle) {
   const r = await sorsaGet(key, 'top-followers', handle);
@@ -901,7 +928,7 @@ async function sorsaDetails(handle, force) {
     const hit = sorsaCache[k];
     const v = { ...(hit?.v || {}) };
     if (!v.top?.length && sorsaTopCache[k]?.v?.users?.length) v.top = sorsaTopCache[k].v.users;
-    const complete = () => v.week !== null && v.week !== undefined && v.month !== null && v.month !== undefined && v.top?.length;
+    const complete = () => v.week !== null && v.week !== undefined && v.month !== null && v.month !== undefined && v.top?.length && v.stats;
     const fresh = v.detailsAt && Date.now() - v.detailsAt < SORSA_TTL;
     if (complete() || (fresh && !force)) return { ok: true, ...v };
     let err = null;
@@ -910,13 +937,16 @@ async function sorsaDetails(handle, force) {
       if (t.ok) {
         for (const f of ['score', 'week', 'month']) if ((v[f] === null || v[f] === undefined) && t[f] !== null && t[f] !== undefined) v[f] = t[f];
         if (!v.top?.length && t.top?.length) v.top = t.top;
+        if (!v.stats && t.stats) v.stats = t.stats;
       } else err = t;
     }
     if (cfg.key && !complete()) {
-      const [c, tp] = await Promise.all([
+      const [c, tp, st] = await Promise.all([
         v.week === null || v.week === undefined || v.month === null || v.month === undefined ? sorsaApi(cfg.key, k).catch(() => null) : null,
         !v.top?.length ? sorsaTopApi(cfg.key, k).catch(() => null) : null,
+        !v.stats ? sorsaStatsApi(cfg.key, k).catch(() => null) : null,
       ]);
+      if (st?.ok && st.stats) v.stats = st.stats;
       if (c?.ok) { v.week ??= c.week; v.month ??= c.month; v.score ??= c.score; }
       if (tp?.ok && tp.users.length) v.top = tp.users.slice(0, 20);
     }

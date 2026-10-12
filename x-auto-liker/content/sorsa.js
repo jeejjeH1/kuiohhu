@@ -21,6 +21,7 @@
   const fmt = (n, d = 1) => Number(n).toLocaleString('en', { maximumFractionDigits: d });
   const fmtK = (n) => (n >= 1e6 ? `${fmt(n / 1e6)}M` : n >= 1e3 ? `${fmt(n / 1e3)}K` : fmt(n, 0));
   const delta = (v) => (v === null || v === undefined ? '' : `${v > 0 ? '+' : v < 0 ? '−' : '±'}${fmt(Math.abs(v), 2)}`);
+  const smartTotal = (st) => (st ? ['influencers', 'projects', 'vcs'].reduce((n, k) => n + (st[k] || 0), 0) : null);
   const dcls = (v) => (v > 0 ? 'up' : v < 0 ? 'down' : 'flat');
 
   function profileHandle() {
@@ -41,6 +42,7 @@
       const meter = add('xs-meter', '');
       const fill = document.createElement('i'); fill.style.width = `${t.pct}%`; meter.appendChild(fill);
       add('xs-tier', `Tier ${t.n} · ${t.name}`);
+      if (res.stats) add('xs-smart', `★ ${fmtK(smartTotal(res.stats))}`);
       badge.title = 'Sorsa Score — برای جزئیات کلیک کنید';
     } else if (res?.ok) {
       badge.dataset.state = 'none';
@@ -108,6 +110,9 @@
       .ss-box { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 10px 12px; }
       .ss-box small { display: block; color: rgba(255,255,255,.55); font-size: 11.5px; }
       .ss-box b { font-size: 17px; direction: ltr; display: inline-block; }
+      .ss-g3 { grid-template-columns: repeat(3, 1fr); margin-top: 0; }
+      .ss-sum { color: #ffd166; direction: ltr; }
+      .ss-src { color: rgba(255,255,255,.45); font-weight: 500; font-size: 11px; }
       .up { color: #00ba7c; } .down { color: #f4212e; } .flat { color: rgba(255,255,255,.6); }
       .ss-sec { display: flex; align-items: center; justify-content: space-between; margin: 6px 0 8px; font-weight: 700; }
       .ss-sec button { background: none; border: 1px solid rgba(255,255,255,.14); color: inherit; border-radius: 99px; padding: 3px 10px; cursor: pointer; font: inherit; font-size: 12px; }
@@ -170,6 +175,12 @@
         <div class="ss-box"><small>تغییر هفتگی</small><b class="wk"></b></div>
         <div class="ss-box"><small>تغییر ماهانه</small><b class="mo"></b></div>
       </div>
+      <div class="ss-sec"><span>اسمارت فالوورها <small class="ss-src">(Sorsa)</small></span><b class="ss-sum"></b></div>
+      <div class="ss-grid ss-g3">
+        <div class="ss-box"><small>اینفلوئنسر</small><b class="sm-i"></b></div>
+        <div class="ss-box"><small>پروژه</small><b class="sm-p"></b></div>
+        <div class="ss-box"><small>VC</small><b class="sm-v"></b></div>
+      </div>
       <div class="ss-sec"><span>برترین دنبال‌کننده‌ها</span><button class="ld">تازه‌سازی</button></div>
       <div class="ss-list"></div>
       <div class="ss-foot"></div>
@@ -192,6 +203,11 @@
         el.textContent = v === null || v === undefined ? '—' : delta(v);
         el.className = sel.slice(1) + (v !== null && v !== undefined ? ` ${dcls(v)}` : '');
       }
+      const st = r.stats;
+      for (const [sel, k] of [['.sm-i', 'influencers'], ['.sm-p', 'projects'], ['.sm-v', 'vcs']]) {
+        body.querySelector(sel).textContent = st && st[k] !== null && st[k] !== undefined ? fmt(st[k], 0) : '—';
+      }
+      body.querySelector('.ss-sum').textContent = st ? `★ ${fmt(smartTotal(st), 0)}` : '';
     };
     fill(res);
     if (res.at) {
@@ -201,20 +217,20 @@
     }
     const list = body.querySelector('.ss-list');
     const btn = body.querySelector('.ld');
-    const has = (r) => r.week !== null && r.week !== undefined && r.month !== null && r.month !== undefined && r.top?.length;
+    const has = (r) => r.week !== null && r.week !== undefined && r.month !== null && r.month !== undefined && r.top?.length && r.stats;
     // Weekly/monthly change and top followers: fetched as soon as the card opens (a background Sorsa tab for a few
     // seconds if the page didn't include them), then remembered for 12 hours.
     const load = async (force) => {
       btn.disabled = true;
       btn.textContent = 'در حال دریافت…';
-      if (!res.top?.length || force) list.innerHTML = '<div class="ss-msg">در حال دریافت تغییرات و برترین دنبال‌کننده‌ها از Sorsa… (چند ثانیه)</div>';
+      if (!res.top?.length || force) list.innerHTML = '<div class="ss-msg">در حال دریافت تغییرات، اسمارت فالوورها و برترین دنبال‌کننده‌ها از Sorsa… (چند ثانیه)</div>';
       const r = await XAL.bg({ type: 'sorsaDetails', handle, force }).catch((e) => ({ ok: false, error: e.message }));
       if (!body.isConnected) return;
       if (r?.ok) {
         fill(r);
         renderTop(list, r.top?.length ? { ok: true, users: r.top } : { ok: false, error: 'برترین دنبال‌کننده‌ها پیدا نشد. می‌توانید آن را در خود Sorsa ببینید.' });
-        res.week = r.week; res.month = r.month; res.top = r.top;
-        document.querySelectorAll(`.xal-sorsa[data-h="${handle.toLowerCase()}"]`).forEach((b) => paint(b, { ...b._res, week: r.week, month: r.month, top: r.top }));
+        res.week = r.week; res.month = r.month; res.top = r.top; res.stats = r.stats;
+        document.querySelectorAll(`.xal-sorsa[data-h="${handle.toLowerCase()}"]`).forEach((b) => paint(b, { ...b._res, week: r.week, month: r.month, top: r.top, stats: r.stats }));
       } else renderTop(list, r);
       btn.disabled = false;
       btn.textContent = 'تازه‌سازی';

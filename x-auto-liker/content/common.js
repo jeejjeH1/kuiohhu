@@ -308,6 +308,7 @@
     .xal-sorsa[data-tier="1"] .xs-tier { background: rgba(128,128,128,.18); color: rgb(113,118,123); }
     .xal-sorsa[data-tier="4"] .xs-tier, .xal-sorsa[data-tier="5"] .xs-tier { background: linear-gradient(90deg,#ff2e7e,#a24bff); color: #fff; }
     .xal-sorsa[data-state="loading"] { opacity: .7; }
+    .xal-sorsa .xs-smart { font-size: 11.5px; color: #d99a00; font-weight: 800; }
     .xal-sorsa[data-state="login"] .xs-tier { background: #1d9bf0; color: #fff; }
     .xal-sorsa[data-state="err"] { border-color: rgba(255,173,31,.5); background: rgba(255,173,31,.08); color: #d99000; }
     .xal-count.warn { color: #ffad1f; } .xal-count.over { color: #f4212e; }`;

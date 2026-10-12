@@ -582,5 +582,9 @@ window.XI_DICT = {
  "این فایل را برای سازنده‌ی اکستنشن بفرستید تا خواندن امتیاز درست شود. فقط صفحه‌ی عمومی Sorsa همین حساب در آن است.": "Send this file to the extension's developer so score reading can be fixed. It only contains this account's public Sorsa page.",
  "عیب‌یابی در تنظیمات Sorsa": "Troubleshoot in Sorsa settings",
  "در حال دریافت تغییرات و برترین دنبال‌کننده‌ها از Sorsa… (چند ثانیه)": "Getting changes and top followers from Sorsa… (a few seconds)",
- "برترین دنبال‌کننده‌ها پیدا نشد. می‌توانید آن را در خود Sorsa ببینید.": "Top followers weren't found. You can see them on Sorsa itself."
+ "برترین دنبال‌کننده‌ها پیدا نشد. می‌توانید آن را در خود Sorsa ببینید.": "Top followers weren't found. You can see them on Sorsa itself.",
+ "اسمارت فالوورها": "Smart followers",
+ "اینفلوئنسر": "Influencers",
+ "پروژه": "Projects",
+ "در حال دریافت تغییرات، اسمارت فالوورها و برترین دنبال‌کننده‌ها از Sorsa… (چند ثانیه)": "Getting changes, smart followers and top followers from Sorsa… (a few seconds)"
 };

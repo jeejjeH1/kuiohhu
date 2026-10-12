@@ -16,7 +16,7 @@
   // "1,234" / "۱٬۲۳۴" / "1.2K" → number
   XAL.parseNum = (s) => {
     if (!s) return 0;
-    const t = String(s).replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+    const t = String(s).replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/٫/g, '.').replace(/٬/g, ',');
     const m = t.match(/(\d[\d,٬.]*)\s*([KkMm]|هزار|میلیون)?/);
     if (!m) return 0;
     let n = parseFloat(m[1].replace(/[,٬]/g, ''));

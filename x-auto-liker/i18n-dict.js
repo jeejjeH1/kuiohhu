@@ -586,5 +586,21 @@ window.XI_DICT = {
  "اسمارت فالوورها": "Smart followers",
  "اینفلوئنسر": "Influencers",
  "پروژه": "Projects",
- "در حال دریافت تغییرات، اسمارت فالوورها و برترین دنبال‌کننده‌ها از Sorsa… (چند ثانیه)": "Getting changes, smart followers and top followers from Sorsa… (a few seconds)"
+ "در حال دریافت تغییرات، اسمارت فالوورها و برترین دنبال‌کننده‌ها از Sorsa… (چند ثانیه)": "Getting changes, smart followers and top followers from Sorsa… (a few seconds)",
+ "نام نمایشی": "Display name",
+ "عکس پروفایل": "Profile photo",
+ "بنر": "Banner",
+ "بیو": "Bio",
+ "موضوع مشخص در بیو": "Clear topic in bio",
+ "توییت پین‌شده": "Pinned tweet",
+ "نسبت دنبال‌کننده به فالووینگ": "Followers to following ratio",
+ "موقعیت": "Location",
+ "لینک": "Link",
+ "🩺 ممیزی پروفایل": "🩺 Profile audit",
+ "امتیاز پروفایل": "Profile score",
+ "امتیاز": "points",
+ "موارد اطلاعاتی": "Info items",
+ "پیشنهادها": "Suggestions",
+ "همه‌ی موارد پر شده است. ✓": "Everything is filled in. ✓",
+ "این بررسی فقط از همین صفحه می‌خواند و جایی فرستاده نمی‌شود. اگر چیزی را اشتباه می‌بینید، صفحه را کامل باز کنید و دوباره بزنید.": "This audit only reads this page and sends nothing anywhere. If something looks wrong, open the full page and press again."
 };

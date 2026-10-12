@@ -1,0 +1,197 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>KAST Motion</title>
+<style>
+  :root {
+    --black: #0C0C0E; --white: #FFFFFF; --grey: #CFCFCF; --grey2: #C5C7CA; --grey3: #AFAFB2;
+    --mint: #1EB997; --mint-d: #12795f;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--black); }
+  body { font-family: 'Inter Display', 'Inter', sans-serif; color: var(--white); -webkit-font-smoothing: antialiased; }
+  #stage { position: absolute; inset: 0; overflow: hidden; background: var(--black); perspective: 1600px; }
+  .abs { position: absolute; }
+  .layer { position: absolute; inset: 0; }
+  .center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+  .word { display: inline-block; white-space: pre; will-change: transform, opacity, filter; }
+  .mint { color: var(--mint); text-shadow: 0 0 34px rgba(30,185,151,.45); }
+  .muted { color: var(--grey3); }
+  .label {
+    font-family: 'Inter'; font-weight: 600; font-size: 22px; letter-spacing: .32em; text-transform: uppercase; color: var(--mint);
+  }
+  .h1 { font-weight: 600; font-size: 104px; line-height: 1.05; letter-spacing: -0.03em; text-align: center; white-space: nowrap; }
+  .h2 { font-weight: 600; font-size: 76px; line-height: 1.1; letter-spacing: -0.025em; text-align: center; white-space: nowrap; }
+  .h3 { font-weight: 500; font-size: 44px; line-height: 1.25; letter-spacing: -0.01em; white-space: nowrap; }
+  .body { font-family: 'Inter'; font-weight: 400; font-size: 30px; color: var(--grey2); white-space: nowrap; }
+  .chip {
+    position: absolute; padding: 16px 26px; border-radius: 999px; border: 1px solid rgba(255,255,255,.14);
+    background: rgba(22,24,26,.82); font-family: 'Inter'; font-weight: 500; font-size: 26px; color: var(--grey);
+    white-space: nowrap; box-shadow: 0 20px 60px rgba(0,0,0,.5); backdrop-filter: blur(8px);
+  }
+  .panel {
+    position: absolute; border-radius: 28px; border: 1px solid rgba(255,255,255,.10);
+    background: linear-gradient(180deg, rgba(30,32,35,.92), rgba(16,17,19,.92)); box-shadow: 0 30px 90px rgba(0,0,0,.6);
+  }
+  .card { position: absolute; width: 800px; height: 503px; border-radius: 34px; background-size: cover; will-change: transform; }
+  .card .shine { position: absolute; inset: 0; border-radius: 34px; mix-blend-mode: screen; pointer-events: none; }
+  svg { overflow: visible; }
+  #grain { position: absolute; inset: 0; mix-blend-mode: overlay; opacity: .09; pointer-events: none; }
+  #vignette { position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(0,0,0,.75) 100%); }
+  #flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; mix-blend-mode: screen; }
+  .row {
+    position: absolute; left: 50%; width: 1180px; height: 112px; margin-left: -590px; border-radius: 24px;
+    border: 1px solid rgba(255,255,255,.10); background: linear-gradient(90deg, rgba(28,30,33,.95), rgba(18,19,21,.9));
+    display: flex; align-items: center; padding: 0 40px; gap: 32px; overflow: hidden;
+  }
+  .row .num { font-family: 'Inter'; font-weight: 600; font-size: 24px; color: var(--mint); letter-spacing: .1em; width: 50px; }
+  .row .ico { width: 56px; height: 56px; border-radius: 16px; background: rgba(255,255,255,.06); display: grid; place-items: center; }
+  .row .txt { font-weight: 500; font-size: 40px; color: var(--white); flex: 1; white-space: nowrap; }
+  .row .strike { position: absolute; left: 120px; top: 55px; height: 3px; background: var(--mint); box-shadow: 0 0 18px var(--mint); }
+  .row .x { font-family: 'Inter'; font-size: 22px; font-weight: 600; letter-spacing: .14em; color: #ff6b6b; opacity: .9; }
+  .tx {
+    position: absolute; width: 580px; white-space: nowrap; height: 104px; border-radius: 22px; padding: 0 28px; display: flex; align-items: center; gap: 22px;
+    border: 1px solid rgba(255,255,255,.10); background: rgba(22,24,26,.92); box-shadow: 0 24px 60px rgba(0,0,0,.55);
+  }
+  .tx .ic { width: 58px; height: 58px; border-radius: 50%; background: rgba(255,255,255,.08); display: grid; place-items: center; }
+  .tx .n { font-weight: 500; font-size: 28px; }
+  .tx .s { font-family: 'Inter'; font-size: 20px; color: var(--grey3); margin-top: 4px; }
+  .tx .a { margin-left: auto; text-align: right; font-weight: 500; font-size: 28px; }
+  .pillnum { font-family: 'Inter'; font-weight: 700; font-size: 280px; letter-spacing: -0.06em; color: transparent;
+    -webkit-text-stroke: 2px rgba(30,185,151,.35); line-height: 1; }
+  .btn {
+    position: absolute; border-radius: 999px; display: grid; place-items: center; font-weight: 600; color: #04140f;
+    background: linear-gradient(180deg, #2fd3ad, #1EB997); box-shadow: 0 0 0 1px rgba(255,255,255,.2) inset, 0 30px 80px rgba(30,185,151,.45);
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <!-- ===== persistent background ===== -->
+  <canvas id="bg" width="1920" height="1080" class="layer"></canvas>
+  <div id="glowWrap" class="layer"><img id="glow" src="assets/glow.webp" class="abs" style="width:1500px;height:1689px;left:210px;top:-305px;opacity:.0"></div>
+  <svg id="grid" class="layer" width="1920" height="1080"></svg>
+
+  <!-- ===== S1 intro ===== -->
+  <div id="s1" class="layer">
+    <div id="s1line" class="abs" style="left:0;top:539px;height:2px;width:1920px;background:linear-gradient(90deg,transparent,#1EB997,transparent);"></div>
+    <div id="s1label" class="label center" style="top:330px">A question worth asking</div>
+    <div id="s1a" class="h1 center" style="top:470px"></div>
+    <div id="s1b" class="h1 center" style="top:600px"></div>
+  </div>
+
+  <!-- ===== S2 two worlds / gap ===== -->
+  <div id="s2" class="layer">
+    <div id="s2L" class="abs" style="left:0;top:0;width:960px;height:1080px;">
+      <div class="label abs" style="left:250px;top:170px" id="s2Llab">On-chain</div>
+      <div id="s2coins" class="layer"></div>
+    </div>
+    <div id="s2R" class="abs" style="left:960px;top:0;width:960px;height:1080px;">
+      <div class="label abs" style="right:250px;top:170px;color:#fff" id="s2Rlab">Real world</div>
+      <div id="s2icons" class="layer"></div>
+    </div>
+    <svg id="s2gap" class="layer" width="1920" height="1080"></svg>
+    <div id="s2cap" class="h2 center" style="top:940px;font-size:58px"></div>
+  </div>
+
+  <!-- ===== S3 friction ===== -->
+  <div id="s3" class="layer">
+    <div id="s3lab" class="label center" style="top:190px">The everyday friction</div>
+    <div id="s3rows"></div>
+    <div id="s3q1" class="h2 center" style="top:440px;color:var(--grey3)"></div>
+    <div id="s3q1s" class="abs" style="top:440px;height:5px;background:#1EB997;box-shadow:0 0 20px #1EB997"></div>
+    <div id="s3q2" class="h2 center" style="top:600px"></div>
+  </div>
+
+  <!-- ===== S4 logo reveal ===== -->
+  <div id="s4" class="layer">
+    <div id="s4pre" class="h3 center" style="top:540px;font-size:56px;color:var(--grey2)"></div>
+    <div id="s4logo" class="center" style="top:470px;width:1200px;height:300px"></div>
+    <div id="s4handle" class="center h3" style="top:700px;font-size:46px;color:#fff"></div>
+    <div id="s4tag" class="center label" style="top:790px;color:var(--grey3);letter-spacing:.38em"></div>
+  </div>
+
+  <!-- ===== S5 pillars ===== -->
+  <div id="s5" class="layer">
+    <div id="pHead" class="abs" style="left:150px;top:150px;">
+      <div id="pNum" class="pillnum abs" style="left:1360px;top:-40px;font-size:240px"></div>
+      <div id="pLab" class="label abs" style="left:0;top:20px;white-space:nowrap"></div>
+      <div id="pTitle" class="abs" style="left:0;top:66px;font-weight:600;font-size:78px;letter-spacing:-.03em;white-space:nowrap"></div>
+      <div id="pBody" class="abs body" style="left:0;top:180px;line-height:1.45"></div>
+    </div>
+    <!-- P1 payments -->
+    <div id="p1" class="layer">
+      <div id="pos" class="panel" style="left:1340px;top:330px;width:330px;height:500px;">
+        <div style="position:absolute;left:30px;top:30px;right:30px;height:190px;border-radius:18px;background:#0a0b0c;border:1px solid rgba(255,255,255,.08)">
+          <div id="posAmt" style="position:absolute;left:0;right:0;top:44px;text-align:center;font-weight:600;font-size:52px">$4.80</div>
+          <div id="posStat" style="position:absolute;left:0;right:0;top:122px;text-align:center;font-family:Inter;font-size:20px;letter-spacing:.2em;color:var(--grey3)">TAP TO PAY</div>
+        </div>
+        <svg width="330" height="260" style="position:absolute;left:0;top:230px" id="posNfc"></svg>
+      </div>
+      <div id="p1card" class="card" style="left:560px;top:330px;background-image:url(assets/card-infinite.webp)"><div class="shine"></div></div>
+      <div id="p1waves" class="layer"></div>
+      <div id="p1tx" class="layer"></div>
+    </div>
+    <!-- P2 stablecoins -->
+    <div id="p2" class="layer">
+      <svg id="p2chart" class="abs" width="1100" height="520" style="left:700px;top:330px"></svg>
+      <div id="p2big" class="abs" style="left:150px;top:560px;font-weight:600;font-size:120px;letter-spacing:-.04em;white-space:nowrap"></div>
+      <div id="p2sub" class="abs body" style="left:156px;top:720px"></div>
+    </div>
+    <!-- P3 global -->
+    <div id="p3" class="layer">
+      <canvas id="globe" width="1000" height="1000" class="abs" style="left:900px;top:80px;width:1000px;height:1000px"></canvas>
+      <div id="p3tags" class="layer"></div>
+      <div id="p3foot" class="abs" style="left:150px;top:960px;font-family:Inter;font-size:20px;color:#7d7f83"></div>
+    </div>
+    <!-- P4 simple -->
+    <div id="p4" class="layer">
+      <div id="p4chips" class="layer"></div>
+      <div id="p4btn" class="btn" style="left:1160px;top:470px;width:420px;height:140px;font-size:50px"></div>
+      <div id="p4ok" class="abs" style="left:1260px;top:660px;width:220px;text-align:center;font-family:Inter;font-weight:600;font-size:24px;letter-spacing:.24em;color:var(--mint)">PAID</div>
+    </div>
+  </div>
+
+  <!-- ===== S6 bigger picture ===== -->
+  <div id="s6" class="layer">
+    <div id="s6lab" class="label center" style="top:150px">The bigger picture</div>
+    <div id="s6t" class="h2 center" style="top:250px"></div>
+    <svg id="s6svg" class="layer" width="1920" height="1080"></svg>
+    <div id="s6L" class="panel" style="left:150px;top:470px;width:480px;height:220px;padding:40px">
+      <div class="label" style="font-size:18px">World 01</div>
+      <div style="font-weight:600;font-size:42px;margin-top:18px;line-height:1.15">Digital assets<br>&amp; stablecoins</div>
+    </div>
+    <div id="s6R" class="panel" style="left:1290px;top:470px;width:480px;height:220px;padding:40px">
+      <div class="label" style="font-size:18px;color:#fff">World 02</div>
+      <div style="font-weight:600;font-size:42px;margin-top:18px;line-height:1.15">Everyday payments<br>&amp; real-world needs</div>
+    </div>
+    <div id="s6K" class="center" style="top:580px;width:200px;height:228px"></div>
+    <div id="s6cards" class="layer" style="transform-style:preserve-3d">
+      <div id="c1" class="card" style="background-image:url(assets/card-penguin.webp)"><div class="shine"></div></div>
+      <div id="c3" class="card" style="background-image:url(assets/card-gold.webp)"><div class="shine"></div></div>
+      <div id="c2" class="card" style="background-image:url(assets/card-infinite.webp)"><div class="shine"></div></div>
+    </div>
+  </div>
+
+  <!-- ===== S7 outro ===== -->
+  <div id="s7" class="layer">
+    <div id="s7a" class="h2 center" style="top:420px;font-size:64px;color:var(--grey2)"></div>
+    <div id="s7b" class="h2 center" style="top:510px;font-size:64px;color:var(--grey2)"></div>
+    <div id="s7c" class="h1 center" style="top:540px;font-size:96px"></div>
+    <div id="endLogo" class="center" style="top:440px;width:900px;height:200px"></div>
+    <div id="endLine" class="h3 center" style="top:620px;color:var(--grey2);font-size:40px"></div>
+    <div id="endHandle" class="center" style="top:720px;padding:14px 30px;border-radius:999px;border:1px solid rgba(30,185,151,.5);background:rgba(30,185,151,.08);font-family:Inter;font-weight:600;font-size:28px;color:#fff;letter-spacing:.04em;white-space:nowrap">@KASTxyz</div>
+    <div id="endDisc" class="center" style="top:1015px;font-family:Inter;font-size:17px;color:#66686c;white-space:nowrap">For eligible users. Availability, fees and features vary by location and service. Not financial advice.</div>
+  </div>
+
+  <canvas id="fx" width="1920" height="1080" class="layer"></canvas>
+  <canvas id="grain" width="480" height="270" style="width:1920px;height:1080px"></canvas>
+  <div id="vignette"></div>
+  <div id="flash"></div>
+</div>
+
+<script src="motion.js"></script>
+</body>
+</html>

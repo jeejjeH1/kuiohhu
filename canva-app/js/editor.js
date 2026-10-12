@@ -1438,8 +1438,8 @@ export class Editor {
         const files = await exportDesign(this.design, { ...opt, pages: opt.all ? null : [this.pageIndex] });
         if (share) {
           const ok = await shareFiles(files, this.design.name).catch((e) => { if (e?.name === 'AbortError') return true; throw e; });
-          if (!ok) { downloadFiles(files); toast('اشتراک‌گذاری پشتیبانی نمی‌شود؛ فایل دانلود شد'); }
-        } else { downloadFiles(files); toast('دانلود شد ✓'); }
+          if (!ok) { await downloadFiles(files); toast('اشتراک‌گذاری پشتیبانی نمی‌شود؛ فایل دانلود شد'); }
+        } else { await downloadFiles(files); if (!window.TarhsazAndroid) toast('دانلود شد ✓'); }
       } catch (e) {
         console.error(e);
         toast('خطا در خروجی گرفتن');

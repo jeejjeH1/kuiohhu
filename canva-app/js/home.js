@@ -3,6 +3,7 @@ import { h, icon, fa, toast, clone, uid, pickFile } from './util.js';
 import { FORMATS, makeDesign } from './model.js';
 import { TEMPLATES, designFromTemplate, templatePreviewDesign } from './templates.js';
 import { thumbnail } from './renderer.js';
+import { downloadFiles } from './export.js';
 import { listDesigns, saveDesign, deleteDesign, getDesign, settings } from './store.js';
 
 const FORMAT_COLORS = ['#ff66c4', '#8c52ff', '#ff914d', '#00bf63', '#5271ff', '#ff3131', '#0cc0df', '#7b4b2a', '#38b6ff', '#545454', '#cb6ce6', '#004aad'];
@@ -141,9 +142,7 @@ export class Home {
       h('button', { on: { click: async () => {
         close();
         const full = await getDesign(d.id);
-        const blob = new Blob([JSON.stringify(full)], { type: 'application/json' });
-        const a = h('a', { href: URL.createObjectURL(blob), download: (full.name || 'design') + '.tarh.json' });
-        document.body.append(a); a.click(); a.remove();
+        downloadFiles([new File([JSON.stringify(full)], (full.name || 'design') + '.tarh.json', { type: 'application/json' })]);
       } } }, icon('download', 18), 'پشتیبان (فایل پروژه)'),
       h('button.danger', { on: { click: async () => {
         close();

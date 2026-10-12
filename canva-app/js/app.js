@@ -64,6 +64,7 @@ if (document.fonts) {
     });
 }
 
-if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+// The Android app serves files from its own assets, so no service worker is needed there.
+if ('serviceWorker' in navigator && location.protocol !== 'file:' && !window.TarhsazAndroid) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }

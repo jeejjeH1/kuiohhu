@@ -75,7 +75,21 @@ export async function exportDesign(design, opts) {
   return files;
 }
 
-export function downloadFiles(files) {
+// Inside the Android app (WebView) a native bridge replaces <a download> and Web Share.
+const android = () => window.TarhsazAndroid;
+
+async function toBase64(file) {
+  const buf = new Uint8Array(await file.arrayBuffer());
+  let bin = '';
+  for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+
+export async function downloadFiles(files) {
+  if (android()) {
+    for (const f of files) android().saveFile(f.name, f.type, await toBase64(f));
+    return;
+  }
   files.forEach((f, i) => setTimeout(() => {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(f);
@@ -88,6 +102,11 @@ export function downloadFiles(files) {
 }
 
 export async function shareFiles(files, title) {
+  if (android()) {
+    for (const f of files) android().addShareFile(f.name, f.type, await toBase64(f));
+    android().share(title || '');
+    return true;
+  }
   if (navigator.canShare?.({ files })) {
     await navigator.share({ files, title });
     return true;

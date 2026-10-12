@@ -12,14 +12,8 @@ python3 -m http.server 8080      # یا هر وب‌سرور استاتیک دی
 سپس `http://localhost:8080` را در موبایل یا مرورگر باز کنید. در موبایل از منوی مرورگر گزینه‌ی **«افزودن به صفحه اصلی / Install app»** را بزنید تا مثل یک اپ مستقل نصب شود.
 برای نصب PWA روی گوشی باید اپ با HTTPS سرو شود (مثلاً GitHub Pages، Netlify یا Vercel).
 
-### ساخت فایل APK / iOS (اختیاری)
-اپ استاتیک است و می‌توان آن را با [Capacitor](https://capacitorjs.com) بسته‌بندی کرد:
-
-```bash
-npm i @capacitor/core @capacitor/cli @capacitor/android
-npx cap init "طرح‌ساز" com.example.tarhsaz --web-dir canva-app
-npx cap add android && npx cap open android   # ساخت APK در Android Studio
-```
+### نسخه‌ی اندروید (APK)
+فایل نصبی آماده در `../canva-app-android/dist/tarhsaz.apk` است. راهنمای نصب و ساخت دوباره در [`canva-app-android/README.md`](../canva-app-android/README.md) آمده است.
 
 ## قابلیت‌ها
 

@@ -1,0 +1,144 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>PrismaX Showcase Motion</title>
+<style>
+  @font-face { font-family: 'Instrument Serif'; src: url(assets/fonts/instrument-serif-latin-400-normal.woff2) format('woff2'); font-style: normal; }
+  @font-face { font-family: 'Instrument Serif'; src: url(assets/fonts/instrument-serif-latin-400-italic.woff2) format('woff2'); font-style: italic; }
+  @font-face { font-family: 'JB Mono'; src: url(assets/fonts/jetbrains-mono-latin-500-normal.woff2) format('woff2'); font-weight: 500; }
+  :root {
+    --cream: #DFD8D0; --white: #FFFFFF; --black: #202020; --gold: #B9986A; --bronze: #B56654; --brown: #7A6B5A;
+    --bg: #1b1a19;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+  body { font-family: 'Inter', sans-serif; color: var(--cream); -webkit-font-smoothing: antialiased; }
+  #stage { position: absolute; inset: 0; overflow: hidden; background: var(--bg); }
+  .layer { position: absolute; inset: 0; }
+  .abs { position: absolute; }
+  .center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+  .word { display: inline-block; white-space: pre; will-change: transform, opacity, filter; }
+  .gold { color: var(--gold); }
+  .muted { color: rgba(223,216,208,.5); }
+  .it { font-style: italic; }
+  .serif { font-family: 'Instrument Serif', serif; font-weight: 400; letter-spacing: -0.01em; }
+  .mono { font-family: 'JB Mono', monospace; font-weight: 500; text-transform: uppercase; letter-spacing: .32em; }
+
+  /* ---------- 3D world ---------- */
+  #world { position: absolute; inset: 0; perspective: 1700px; perspective-origin: 50% 46%; transform-style: preserve-3d; }
+  #rig { position: absolute; inset: 0; transform-style: preserve-3d; }
+  .phone { position: absolute; left: 0; top: 0; width: 444px; height: 806px; transform-style: preserve-3d; }
+  .phone .edge { position: absolute; inset: 0; border-radius: 52px; }
+  .phone .front, .phone .back { position: absolute; inset: 0; border-radius: 52px; backface-visibility: hidden; overflow: hidden; }
+  .phone .front { background: #0e0e0e; box-shadow: inset 0 0 0 2px rgba(223,216,208,.22); }
+  .phone .screen { position: absolute; left: 12px; top: 12px; width: 420px; height: 782px; border-radius: 42px; overflow: hidden; background: #111; }
+  .phone .screen img, .phone .screen canvas { position: absolute; left: 0; top: 0; width: 420px; height: 782px; object-fit: cover; object-position: top; transform-origin: 50% 0; }
+  .phone .glare { position: absolute; inset: 0; border-radius: 52px; pointer-events: none; mix-blend-mode: screen; }
+  .phone .shade { position: absolute; inset: 0; border-radius: 52px; background: #141312; opacity: 0; }
+  .phone .back { background: linear-gradient(160deg, #2a2724, #121110 70%); box-shadow: inset 0 0 0 2px rgba(185,152,106,.35); }
+  .phone .back svg { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+
+  .tile { position: absolute; left: 0; top: 0; width: 360px; height: 360px; transform-style: preserve-3d; }
+  .tile .edge { position: absolute; inset: 0; border-radius: 44px; }
+  .tile .face { position: absolute; inset: 0; border-radius: 44px; backface-visibility: hidden; overflow: hidden; display: grid; place-items: center; }
+  .tile .face.f { background: linear-gradient(150deg, #ebe5dd, #DFD8D0 45%, #cfc6ba); }
+  .tile .face.b { background: linear-gradient(150deg, #2b2825, #1a1817); transform: translateZ(-44px) rotateY(180deg); box-shadow: inset 0 0 0 2px rgba(185,152,106,.4); }
+  .tile .sweep { position: absolute; inset: -40%; mix-blend-mode: soft-light; }
+
+  /* ---------- text ---------- */
+  #siteText { position: absolute; left: 150px; top: 540px; width: 760px; transform: translateY(-50%); display: flex; flex-direction: column; }
+  #catChip { display: flex; align-items: center; gap: 18px; font-size: 24px; color: var(--gold); margin-bottom: 34px; white-space: nowrap; }
+  #catChip .bar { width: 46px; height: 1.5px; background: var(--gold); transform-origin: 0 50%; }
+  #sName { font-size: 140px; line-height: .93; color: var(--cream); white-space: nowrap; }
+  #sBy { font-size: 46px; margin-top: 34px; white-space: nowrap; font-weight: 400; }
+  #sDesc { font-size: 40px; line-height: 1.36; margin-top: 24px; width: 720px; color: rgba(223,216,208,.74); font-weight: 400; }
+  #bigNum { position: absolute; left: 92px; top: 540px; transform: translateY(-50%); font-size: 640px; line-height: 1; color: transparent;
+    -webkit-text-stroke: 1.5px rgba(185,152,106,.16); font-style: italic; white-space: nowrap; }
+  #prog { position: absolute; left: 150px; top: 978px; display: flex; align-items: center; gap: 10px; }
+  #prog .t { width: 30px; height: 3px; border-radius: 2px; background: rgba(223,216,208,.16); }
+  #progLab { position: absolute; left: 150px; top: 926px; font-size: 22px; color: rgba(223,216,208,.55); white-space: nowrap; }
+  #brandTag { position: absolute; right: 70px; top: 60px; display: flex; align-items: center; gap: 16px; }
+  #brandTag .lab { font-size: 19px; color: rgba(223,216,208,.5); letter-spacing: .3em; }
+
+  .catNum { font-size: 28px; color: var(--gold); }
+  .catTitle { font-size: 168px; line-height: .96; white-space: nowrap; }
+  .catSub { font-size: 26px; color: rgba(223,216,208,.6); white-space: nowrap; }
+
+  .h1 { font-size: 168px; line-height: .98; white-space: nowrap; text-align: center; }
+  .h2 { font-size: 104px; line-height: 1.02; white-space: nowrap; text-align: center; }
+  .h3 { font-size: 78px; line-height: 1.1; white-space: nowrap; text-align: center; }
+  .body { font-size: 42px; color: rgba(223,216,208,.7); white-space: nowrap; text-align: center; }
+  .pill { padding: 12px 26px; border-radius: 999px; border: 1px solid rgba(181,102,84,.6); background: rgba(181,102,84,.10);
+    font-size: 22px; color: var(--cream); display: flex; align-items: center; gap: 14px; white-space: nowrap; }
+  .pill .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--bronze); box-shadow: 0 0 14px var(--bronze); }
+
+  #grain { position: absolute; inset: 0; mix-blend-mode: overlay; opacity: .10; pointer-events: none; }
+  #vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 48%, rgba(0,0,0,0) 50%, rgba(0,0,0,.62) 100%); }
+  #fade { position: absolute; inset: 0; background: var(--bg); opacity: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="bg" width="1920" height="1080" class="layer"></canvas>
+  <canvas id="dust" width="1920" height="1080" class="layer"></canvas>
+
+  <!-- big faint index number sits behind the 3D world -->
+  <div id="bigNum" class="serif"></div>
+
+  <div id="world"><div id="rig"></div></div>
+
+  <!-- ===== intro ===== -->
+  <div id="intro" class="layer">
+    <div id="iLabel" class="mono center" style="top:448px;font-size:26px;color:var(--gold)"></div>
+    <div id="iH1" class="serif h1 center" style="top:600px"></div>
+    <div id="iH2" class="serif h1 center" style="top:762px"></div>
+    <div id="iLive" class="pill mono center" style="top:900px"><span class="dot"></span><span>Live now</span></div>
+
+    <div id="sA" class="serif center" style="top:420px;font-size:250px;line-height:1;white-space:nowrap"></div>
+    <div id="sB" class="serif h2 center" style="top:600px"></div>
+    <div id="sC" class="body center" style="top:728px"></div>
+    <div id="sD" class="body center" style="top:790px"></div>
+  </div>
+
+  <!-- ===== category cards ===== -->
+  <div id="cat" class="layer">
+    <div id="cNum" class="mono catNum abs" style="left:156px;top:300px;white-space:nowrap"></div>
+    <div id="cTitle" class="serif catTitle abs" style="left:150px;top:370px"></div>
+    <div id="cLine" class="abs" style="left:156px;top:730px;width:420px;height:1.5px;background:linear-gradient(90deg,var(--gold),transparent);transform-origin:0 50%"></div>
+    <div id="cSub" class="mono catSub abs" style="left:156px;top:760px"></div>
+  </div>
+
+  <!-- ===== site text ===== -->
+  <div id="site" class="layer">
+    <div id="siteText">
+      <div id="catChip" class="mono"><div class="bar"></div><span id="catChipT"></span></div>
+      <div id="sName" class="serif"></div>
+      <div id="sBy"></div>
+      <div id="sDesc"></div>
+    </div>
+    <div id="progLab" class="mono"></div>
+    <div id="prog"></div>
+  </div>
+
+  <!-- ===== outro ===== -->
+  <div id="outro" class="layer">
+    <div id="oA" class="serif h2 center" style="top:330px"></div>
+    <div id="oB" class="serif h3 center" style="top:510px"></div>
+    <div id="oC" class="serif h3 center" style="top:610px"></div>
+    <div id="oD" class="serif h3 center" style="top:710px"></div>
+    <div id="endWm" class="center" style="top:450px"></div>
+    <div id="endT" class="mono center" style="top:650px;font-size:30px;color:var(--gold)"></div>
+    <div id="endS" class="body center" style="top:730px;font-size:40px"></div>
+  </div>
+
+  <div id="brandTag"><span class="lab mono" id="brandLab">Community Showcase</span><div id="brandMark"></div></div>
+
+  <canvas id="grain" width="480" height="270" style="width:1920px;height:1080px"></canvas>
+  <div id="vignette"></div>
+  <div id="fade"></div>
+</div>
+<script src="assets/logos.js"></script>
+<script src="motion.js"></script>
+</body>
+</html>

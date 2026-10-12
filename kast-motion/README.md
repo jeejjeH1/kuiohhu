@@ -24,6 +24,7 @@ The K mark is redrawn as a vector; the card art and the mint glow texture are in
 python3 audio.py                 # -> out/audio.wav (procedural score + SFX, needs numpy + scipy)
 node render.js video 4           # -> out/video_noaudio.mp4 (Playwright + Chromium, 4 workers)
 node render.js preview 25.1 47.7 # -> preview/t*.png stills for checking frames
+node render.js range 750 870 out/seg.mp4  # re-render a frame range only
 ffmpeg -i out/video_noaudio.mp4 -i out/audio.wav -c:v copy -c:a aac -b:a 256k -shortest -movflags +faststart kast_motion_16x9.mp4
 ```
 Every frame is deterministic: `motion.js` exposes `render(t)` and draws the whole timeline as a function of time.

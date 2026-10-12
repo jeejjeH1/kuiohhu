@@ -146,7 +146,7 @@ function animLogo(L, t, tSnap, o = {}) {
   const glow = t < tSnap ? 0.25 * p : 0.25 + 0.75 * Math.exp(-(t - tSnap) * 2.2);
   L.kglow.setAttribute('opacity', (glow * E.outCubic(P(t, tSnap - conv, tSnap - conv + 0.25))).toFixed(3));
   if (L.text) {
-    const r = E.outExpo(P(t, tSnap + 0.35, tSnap + 1.0));
+    const r = E.outExpo(P(t, tSnap + 0.55, tSnap + 1.2));
     L.clip.setAttribute('x', L.tx - 20); L.clip.setAttribute('width', (L.tw + 60) * r);
     L.text.setAttribute('x', L.tx - 50 * (1 - r));
   }

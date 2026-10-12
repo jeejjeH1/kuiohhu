@@ -1,5 +1,6 @@
 // Usage: node render.js preview t1 t2 ...   -> PNG stills in ./preview
 //        node render.js video [workers]      -> out/video_noaudio.mp4
+//        node render.js range f0 f1 out.mp4  -> re-render frames [f0, f1)
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
 const fs = require('fs'), path = require('path');
@@ -60,5 +61,12 @@ async function video(workers) {
   parts.forEach(p => fs.unlinkSync(p));
 }
 
+async function range(f0, f1, out) {
+  const browser = await chromium.launch({ args: ['--allow-file-access-from-files'] });
+  await renderRange(browser, f0, f1, out);
+  await browser.close();
+}
+
 const [mode, ...rest] = process.argv.slice(2);
-(mode === 'preview' ? preview(rest) : video(+(rest[0] || 4))).catch(e => { console.error(e); process.exit(1); });
+(mode === 'preview' ? preview(rest) : mode === 'range' ? range(+rest[0], +rest[1], rest[2]) : video(+(rest[0] || 4)))
+  .catch(e => { console.error(e); process.exit(1); });

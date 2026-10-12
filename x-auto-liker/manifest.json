@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "X Auto Liker",
-  "version": "7.6.0",
+  "version": "7.7.0",
   "description": "جعبه‌ابزار فارسی X: لایک نوبتی، کامنت هوشمند، فونت فارسی، دانلود، عکس از توییت، پوشه‌بندی، قالب متن، آمار و مدیریت دنبال‌شوندگان.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyRKYXtnKhKfkKvx6tuJPENmKNo/DpIxOfTG0kAkucf68PmxaRb9+JPOy7q5ODsnF96wF+bCnBgar7eQ5uU7VVRaW7r3sXypUWddzBVt2aAnQN+8+OXP6wWLE6lDtn1wIMPn7/PCFSzpbENDBre3cfEAHNwKm2Mno0VE1pSksGeYK2E7NV4fN0TIkYqV1ZFk81A/TxMhMhFrbPqPKnA/0zctX3FZSwa4jeiMSR/nN5rNmtta1gRKS9dHQI6TH/H2QfZRnmuAAMrOOkFxS/e8fgPAiItsGlUXpBnQSAcuIpg6NeAXZSKM2fbjeKG2BGoJDbXHUWODAbMNqe8IkTNxPPQIDAQAB",
   "permissions": [
@@ -20,7 +20,8 @@
     "https://abs.twimg.com/*",
     "https://video.twimg.com/*",
     "https://openrouter.ai/*",
-    "https://api.sorsa.io/*"
+    "https://api.sorsa.io/*",
+    "https://app.sorsa.io/*"
   ],
   "background": {
     "service_worker": "background.js"

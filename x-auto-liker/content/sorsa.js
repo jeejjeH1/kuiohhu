@@ -1,13 +1,13 @@
-// Optional Sorsa Score badge on profile pages. Off until the user turns it on and adds their own Sorsa API key
-// (pages/sorsa.html). It reads the handle of the profile that is open and asks the background (official API) for
-// the score and its weekly change; the key never reaches X. Clicking the badge opens a card with the tier, the
-// monthly change and the top followers by score (fetched only then, to save the key's credit).
+// Sorsa Score badge on profile pages (settings: pages/sorsa.html). It reads the handle of the profile that is open
+// and asks the background for the score: from the user's own app.sorsa.io sign-in (no key), or the optional API key.
+// Nothing reaches X. Clicking the badge opens a card with the tier, weekly/monthly change and top followers.
 (() => {
   const { XAL } = window;
   const RESERVED = new Set(['home', 'explore', 'notifications', 'messages', 'i', 'settings', 'search', 'compose', 'tos', 'privacy', 'login', 'signup',
     'logout', 'jobs', 'communities', 'lists', 'bookmarks', 'premium', 'following', 'followers', 'account', 'intent', 'share', 'hashtag']);
   // Sorsa's public tiers: Unknown 0–99, Noted 100–499, Credible 500–999, Significant 1000–1999, Supreme 2000+.
   const TIERS = [[0, 'Unknown'], [100, 'Noted'], [500, 'Credible'], [1000, 'Significant'], [2000, 'Supreme']];
+  const SORSA_APP = 'https://app.sorsa.io/';
   const pending = new Map();
   let cfg = null;
 
@@ -46,6 +46,11 @@
       badge.dataset.state = 'none';
       add('xs-score', 'Sorsa —');
       badge.title = 'امتیازی برای این حساب پیدا نشد';
+    } else if (res?.code === 'login') {
+      badge.dataset.state = 'login';
+      add('xs-score', 'Sorsa');
+      add('xs-tier', 'ورود به Sorsa').dir = 'auto';
+      badge.title = res.error;
     } else {
       badge.dataset.state = 'err';
       add('xs-score', 'Sorsa ⚠');
@@ -60,7 +65,7 @@
     document.querySelectorAll('.xal-sorsa').forEach((el) => { if (el.dataset.h !== key) el.remove(); });
     if (!h) return;
     if (!cfg) cfg = (await chrome.storage.local.get('sorsa')).sorsa || {};
-    if (!cfg.enabled || !cfg.key) return;
+    if (cfg.enabled === false) return;
     const name = document.querySelector('[data-testid="UserName"]');
     // X keeps the previous profile's DOM for a moment after navigating; only act when this header is the open profile
     if (!name || !name.textContent.toLowerCase().includes(`@${key}`)) return;
@@ -72,7 +77,11 @@
       badge.dataset.h = key;
       badge.dataset.state = 'loading';
       badge.textContent = 'Sorsa …';
-      badge.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); openCard(h, badge._res); });
+      badge.addEventListener('click', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        if (badge._res?.code === 'login') window.open(SORSA_APP, '_blank', 'noopener');
+        else openCard(h, badge._res);
+      });
       name.insertAdjacentElement('afterend', badge);
     }
     if (!pending.has(key)) {
@@ -112,12 +121,15 @@
       .ss-u .sc { font-weight: 800; color: #d6b8ff; }
       .ss-rank { width: 18px; color: rgba(255,255,255,.4); font-size: 12px; text-align: center; }
       .ss-msg { color: rgba(255,255,255,.6); font-size: 13px; padding: 10px 0; }
-      .ss-foot { color: rgba(255,255,255,.4); font-size: 11px; margin-top: 12px; }`);
+      .ss-foot { color: rgba(255,255,255,.4); font-size: 11px; margin-top: 12px; }
+      .ss-open { display: inline-block; margin-top: 6px; color: #8fb3ff; font-size: 12.5px; text-decoration: none; }
+      .ss-open:hover { text-decoration: underline; }`);
   }
 
   function renderTop(box, res) {
     box.textContent = '';
     if (!res?.ok) { box.innerHTML = `<div class="ss-msg"></div>`; box.firstChild.textContent = res?.error || 'خطا'; return; }
+    if (!res.users) return;
     if (!res.users.length) { box.innerHTML = `<div class="ss-msg">دنبال‌کننده‌ی امتیازداری پیدا نشد.</div>`; return; }
     res.users.slice(0, 20).forEach((u, i) => {
       const a = document.createElement('a');
@@ -153,8 +165,10 @@
         <div class="ss-box"><small>تغییر ماهانه</small><b class="mo"></b></div>
       </div>
       <div class="ss-sec"><span>برترین دنبال‌کننده‌ها</span><button class="ld">نمایش</button></div>
-      <div class="ss-list"><div class="ss-msg">برای دیدن ۲۰ دنبال‌کننده‌ی برتر بر اساس امتیاز Sorsa «نمایش» را بزنید (یک درخواست از کلید شما).</div></div>
-      <div class="ss-foot"></div>`;
+      <div class="ss-list"><div class="ss-msg">برای دیدن دنبال‌کننده‌های برتر بر اساس امتیاز Sorsa «نمایش» را بزنید.</div></div>
+      <div class="ss-foot"></div>
+      <a class="ss-open" target="_blank" rel="noopener">باز کردن در Sorsa ↗</a>`;
+    body.querySelector('.ss-open').href = `${SORSA_APP}profile/${encodeURIComponent(handle)}`;
     body.querySelector('.ss-big').textContent = fmt(res.score);
     body.querySelector('.ss-tier').textContent = `Tier ${t.n} · ${t.name}`;
     body.querySelector('.ss-h').textContent = `@${handle}`;
@@ -189,9 +203,10 @@
       loaded = true;
     };
     btn.addEventListener('click', () => load(loaded));
-    // Already in the cache? Show it right away without spending a request.
+    // Came with the Sorsa page, or already in the cache? Show it right away without another request.
     const cached = (await chrome.storage.local.get('sorsaTopCache')).sorsaTopCache?.[handle.toLowerCase()];
-    if (cached && Date.now() - cached.at < 12 * 3600e3) { renderTop(list, { ok: true, ...cached.v }); btn.textContent = 'تازه‌سازی'; loaded = true; }
+    const ready = res.top?.length ? { ok: true, users: res.top } : cached && Date.now() - cached.at < 12 * 3600e3 ? { ok: true, ...cached.v } : null;
+    if (ready) { renderTop(list, ready); btn.textContent = 'تازه‌سازی'; loaded = true; }
   }
 
   let timer;
@@ -200,6 +215,14 @@
     if (area !== 'local' || !c.sorsa) return;
     cfg = null;
     document.querySelectorAll('.xal-sorsa').forEach((el) => el.remove());
+    run();
+  });
+  // Back from signing in to Sorsa in another tab: try again.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    const stale = document.querySelectorAll('.xal-sorsa[data-state="login"], .xal-sorsa[data-state="err"]');
+    if (!stale.length) return;
+    stale.forEach((el) => el.remove());
     run();
   });
 })();

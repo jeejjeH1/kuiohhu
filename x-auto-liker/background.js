@@ -579,12 +579,19 @@ async function aiTestKey(key) {
   return { ok: true, label: d.label || '', free: !!d.is_free_tier, usage: d.usage };
 }
 
-// ── Sorsa Score (optional, off by default): official API, the user's own key, background-only ─────────────
-// Endpoints (https://api.sorsa.io/v3, header ApiKey): /score → { score }, /score-changes → { week_delta, month_delta },
-// /top-followers → { users: [{ username, display_name, profile_image_url, followers_count, score, … }] }.
+// ── Sorsa Score ─────────────────────────────────────────────────────────────────────────────────────────
+// Two sources, both background-only:
+//  1. No key (default): the user's own app.sorsa.io sign-in in this browser. We load the public Sorsa profile page
+//     with that session (credentials: 'include') and read the score from the page data. A free Sorsa account is enough.
+//  2. Optional API key (https://api.sorsa.io/v3, header ApiKey): /score → { score }, /score-changes → { week_delta,
+//     month_delta }, /top-followers → { users: [...] }. Used when the page gave nothing, or for top followers.
 const SORSA = 'https://api.sorsa.io/v3';
+const SORSA_APP = 'https://app.sorsa.io';
 const SORSA_TTL = 12 * 3600e3;
-const num = (v) => (v !== '' && v !== null && v !== undefined && isFinite(Number(v)) ? Number(v) : null);
+const num = (v) => {
+  if (typeof v === 'string') v = v.replace(/,/g, '').trim();
+  return v !== '' && v !== null && v !== undefined && typeof v !== 'boolean' && isFinite(Number(v)) ? Number(v) : null;
+};
 function sorsaPick(d) {
   if (typeof d === 'number') return d;
   if (!d || typeof d !== 'object') return null;
@@ -592,6 +599,101 @@ function sorsaPick(d) {
   for (const v of Object.values(d)) if (v && typeof v === 'object') { const r = sorsaPick(v); if (r !== null) return r; }
   return null;
 }
+const sorsaUser = (u) => ({
+  username: u.username || u.screen_name || u.handle || '', name: u.display_name || u.name || '',
+  avatar: u.profile_image_url || u.profile_image_url_https || u.avatar || u.image || '',
+  followers: num(u.followers_count ?? u.followers), score: num(u.score ?? u.sorsa_score ?? u.twitter_score), verified: !!u.verified,
+});
+const sorsaUsers = (list) => list.map(sorsaUser).filter((u) => u.username).sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+
+// ── 1. Sorsa website with the user's session ──
+// app.sorsa.io is a Next.js app: its server-rendered data sits in self.__next_f.push([n, "…"]) chunks as lines of
+// "id:JSON", with React Query records ({ queryKey: [...], state: { data } }). Field names are not documented, so we
+// look for them loosely and fall back to the score shown in the page text / meta tags.
+function sorsaPageData(html) {
+  let flight = '';
+  for (const m of html.matchAll(/self\.__next_f\.push\(\[\d+,\s*"((?:\\.|[^"\\])*)"\]\)/g)) {
+    try { flight += JSON.parse(`"${m[1]}"`); } catch { /* skip broken chunk */ }
+  }
+  const roots = [];
+  for (const line of flight.split('\n')) {
+    const i = line.indexOf(':');
+    if (i < 1 || i > 8) continue;
+    try { roots.push(JSON.parse(line.slice(i + 1))); } catch { /* not a JSON record */ }
+  }
+  for (const m of html.matchAll(/<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/g)) { try { roots.push(JSON.parse(m[1])); } catch { /* ignore */ } }
+  return roots;
+}
+const deltaKey = (k, period) => period.test(k) && /delta|change|diff|grow|gain/i.test(k);
+function sorsaParse(html, handle) {
+  const h = handle.toLowerCase();
+  const out = { score: null, week: null, month: null, top: null };
+  const isMe = (o) => [o.screen_name, o.username, o.handle].some((v) => typeof v === 'string' && v.replace(/^@/, '').toLowerCase() === h);
+  const deltas = (o, loose) => {
+    for (const [k, v] of Object.entries(o)) {
+      if (num(v) === null) continue;
+      if (out.week === null && (deltaKey(k, /week|7d|7_d|seven/i) || (loose && /^(week|weekly|7d|d7)$/i.test(k)))) out.week = num(v);
+      if (out.month === null && (deltaKey(k, /month|30d|30_d|thirty/i) || (loose && /^(month|monthly|30d|d30)$/i.test(k)))) out.month = num(v);
+    }
+  };
+  const seen = new Set();
+  const visit = (node, depth) => {
+    if (!node || typeof node !== 'object' || depth > 60 || seen.has(node)) return;
+    seen.add(node);
+    if (Array.isArray(node.queryKey)) {
+      const key = node.queryKey.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join(' ');
+      const data = node.state?.data;
+      const aboutMe = key.toLowerCase().includes(h);
+      if (data !== undefined && data !== null) {
+        if (/top.?follow/i.test(key) && aboutMe && !out.top) {
+          const list = Array.isArray(data) ? data : data.users || data.items || data.data || data.results;
+          if (Array.isArray(list)) out.top = sorsaUsers(list);
+        } else if (/change|delta|history/i.test(key) && aboutMe && typeof data === 'object') deltas(data, true);
+        else if (/score/i.test(key) && aboutMe && out.score === null) out.score = typeof data === 'object' ? sorsaPick(data) : num(data);
+      }
+    }
+    if (!Array.isArray(node) && isMe(node)) {
+      if (out.score === null) for (const k of ['score', 'sorsa_score', 'sorsaScore', 'twitter_score', 'total_score']) if (num(node[k]) !== null) { out.score = num(node[k]); break; }
+      deltas(node, false);
+      for (const [k, v] of Object.entries(node)) if (v && typeof v === 'object' && !Array.isArray(v) && !isMe(v)) deltas(v, /change|delta|diff/i.test(`${k} ${Object.keys(v).join(' ')}`));
+    }
+    for (const v of Array.isArray(node) ? node : Object.values(node)) if (v && typeof v === 'object') visit(v, depth + 1);
+  };
+  for (const r of sorsaPageData(html)) visit(r, 0);
+  if (out.score === null) {
+    // Fallbacks: meta tags ("… Score 870 …"), then the visible text.
+    const meta = [...html.matchAll(/<meta[^>]+>/gi)].map((m) => m[0]).filter((t) => /og:title|og:description|twitter:title|name="description"/i.test(t))
+      .map((t) => (t.match(/content=["']([^"']*)["']/i) || [])[1] || '').join(' ');
+    const text = html.replace(/<(script|style|noscript)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
+    for (const src of [meta, text]) {
+      const m = src.match(/sorsa\s*score\s*(?:of|is)?\s*[:=\-]?\s*([0-9][0-9,]*(?:\.[0-9]+)?)/i) || src.match(/\bscore\s*(?:of|is)?\s*[:=\-]?\s*([0-9][0-9,]*(?:\.[0-9]+)?)/i);
+      const v = m ? num(m[1]) : null;
+      if (v !== null && v > 0 && v < 100000) { out.score = v; break; }
+    }
+  }
+  return out;
+}
+const sorsaLoginPage = (url) => { try { return /^\/(authorization|login|sign-?in|auth)\b/i.test(new URL(url).pathname); } catch { return false; } };
+async function sorsaWeb(handle) {
+  let res;
+  try {
+    res = await fetch(`${SORSA_APP}/profile/${encodeURIComponent(handle)}`, { credentials: 'include', cache: 'no-store', headers: { Accept: 'text/html' } });
+  } catch { return { ok: false, code: 'failed', error: 'به app.sorsa.io دسترسی نیست.' }; }
+  if (sorsaLoginPage(res.url) || res.status === 401) return { ok: false, code: 'login', error: 'برای دیدن امتیاز بدون کلید، در همین مرورگر وارد app.sorsa.io شوید.' };
+  if (res.status === 404) return { ok: true, score: null, week: null, month: null };
+  if (res.status === 429) return { ok: false, code: 'limit', error: 'Sorsa موقتاً درخواست‌ها را محدود کرده؛ کمی بعد دوباره امتحان کنید.' };
+  if (!res.ok) return { ok: false, code: 'failed', error: `خطای Sorsa ${res.status}` };
+  const r = sorsaParse(await res.text(), handle);
+  return { ok: true, ...r, top: r.top?.length ? r.top.slice(0, 20) : undefined };
+}
+async function sorsaSession() {
+  try {
+    const res = await fetch(`${SORSA_APP}/`, { credentials: 'include', cache: 'no-store' });
+    return { ok: true, login: !sorsaLoginPage(res.url) };
+  } catch (e) { return { ok: false, error: e.message }; }
+}
+
+// ── 2. Official API with the user's key ──
 async function sorsaGet(key, path, handle) {
   const res = await fetch(`${SORSA}/${path}?username=${encodeURIComponent(handle)}`, { headers: { ApiKey: key, Accept: 'application/json' } });
   if (res.status === 401 || res.status === 403) return { ok: false, code: 'auth', error: 'کلید Sorsa معتبر نیست.' };
@@ -602,35 +704,50 @@ async function sorsaGet(key, path, handle) {
   try { data = await res.json(); } catch { /* keep null */ }
   return { ok: true, data };
 }
-async function sorsaFetch(key, handle) {
+async function sorsaApi(key, handle) {
   const [s, c] = await Promise.all([sorsaGet(key, 'score', handle), sorsaGet(key, 'score-changes', handle).catch(() => ({ ok: false }))]);
   if (!s.ok) return s;
   const d = c.ok && c.data ? c.data : {};
   return { ok: true, score: sorsaPick(s.data), week: num(d.week_delta), month: num(d.month_delta) };
 }
-async function sorsaTopFetch(key, handle) {
+async function sorsaTopApi(key, handle) {
   const r = await sorsaGet(key, 'top-followers', handle);
   if (!r.ok) return r;
   const list = Array.isArray(r.data?.users) ? r.data.users : Array.isArray(r.data) ? r.data : [];
-  const users = list.map((u) => ({
-    username: u.username || u.screen_name || '', name: u.display_name || u.name || '', avatar: u.profile_image_url || '',
-    followers: num(u.followers_count), score: num(u.score), verified: !!u.verified,
-  })).filter((u) => u.username).sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
-  return { ok: true, users };
+  return { ok: true, users: sorsaUsers(list) };
 }
-// One cache per kind ('sorsaCache' for score+changes, 'sorsaTopCache' for top followers), 12 hours, at most 500 handles.
+
+// Website first; the key (if any) when the website can't help. Last error wins only if nothing worked.
+async function sorsaFetch(cfg, handle) {
+  let r = cfg.source !== 'api' ? await sorsaWeb(handle) : { ok: false, code: 'skip' };
+  if (r.ok && r.score !== null) return { ...r, src: 'web' };
+  if (cfg.key) {
+    const a = await sorsaApi(cfg.key, handle);
+    if (a.ok) return { ...a, src: 'api' };
+    if (!r.ok) r = a;
+  }
+  if (!r.ok && r.code === 'skip') return { ok: false, code: 'off', error: 'اول کلید Sorsa را در تنظیمات وارد کنید.' };
+  return r;
+}
+async function sorsaTopFetch(cfg, handle) {
+  const { sorsaCache = {} } = await chrome.storage.local.get('sorsaCache');
+  const fromPage = sorsaCache[handle]?.v?.top;
+  if (fromPage?.length) return { ok: true, users: fromPage };
+  if (cfg.key) return sorsaTopApi(cfg.key, handle);
+  return { ok: false, code: 'nokey', error: 'برترین دنبال‌کننده‌ها در صفحه‌ی Sorsa این حساب پیدا نشد. می‌توانید آن را در خود Sorsa ببینید.' };
+}
+// One cache per kind ('sorsaCache' for the score, 'sorsaTopCache' for top followers), 12 hours, at most 400 handles.
 async function sorsaCached(store, handle, force, fetcher) {
   const { sorsa = {}, [store]: cache = {} } = await chrome.storage.local.get(['sorsa', store]);
-  if (!sorsa.key) return { ok: false, code: 'off', error: 'اول کلید Sorsa را در تنظیمات وارد کنید.' };
   const k = String(handle).replace(/^@/, '').toLowerCase();
   const hit = cache[k];
   if (!force && hit && Date.now() - hit.at < SORSA_TTL) return { ...hit.v, ok: true, cached: true, at: hit.at };
-  const r = await fetcher(sorsa.key, k);
+  const r = await fetcher(sorsa, k);
   if (r.ok) {
     const { ok, ...v } = r;
     cache[k] = { v, at: Date.now() };
     const keys = Object.keys(cache);
-    if (keys.length > 500) for (const o of keys.sort((a, c) => cache[a].at - cache[c].at).slice(0, keys.length - 500)) delete cache[o];
+    if (keys.length > 400) for (const o of keys.sort((a, c) => cache[a].at - cache[c].at).slice(0, keys.length - 400)) delete cache[o];
     await chrome.storage.local.set({ [store]: cache });
     r.at = cache[k].at;
   }
@@ -638,7 +755,7 @@ async function sorsaCached(store, handle, force, fetcher) {
 }
 async function sorsaScore(handle, { manual = false, force = false } = {}) {
   const { sorsa = {} } = await chrome.storage.local.get('sorsa');
-  if (!manual && !sorsa.enabled) return { ok: false, code: 'off' };
+  if (!manual && sorsa.enabled === false) return { ok: false, code: 'off' };
   return sorsaCached('sorsaCache', handle, force, sorsaFetch);
 }
 const sorsaTop = (handle, force) => sorsaCached('sorsaTopCache', handle, force, sorsaTopFetch);
@@ -659,6 +776,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
   if (msg.type === 'sorsaTop') {
     sorsaTop(msg.handle, !!msg.force).then(sendResponse, (e) => sendResponse({ ok: false, code: 'failed', error: e.message }));
+    return true;
+  }
+  if (msg.type === 'sorsaSession') {
+    sorsaSession().then(sendResponse);
     return true;
   }
   if (msg.type === 'sorsaTest') {

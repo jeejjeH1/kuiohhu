@@ -1,4 +1,4 @@
-// Settings for the optional Sorsa Score badge: the user's own API key and an on/off switch.
+// Settings for the Sorsa Score badge: Sorsa sign-in status (no key needed), on/off switch, optional API key.
 const $ = (id) => document.getElementById(id);
 if (new URLSearchParams(location.search).has('embed')) { document.body.classList.add('embed'); document.documentElement.classList.add('embed'); }
 const say = (t, ok) => { $('msg').style.color = ok ? 'var(--green)' : '#ff8a95'; $('msg').textContent = t; };
@@ -6,12 +6,22 @@ const say = (t, ok) => { $('msg').style.color = ok ? 'var(--green)' : '#ff8a95';
 async function load() {
   const { sorsa = {} } = await chrome.storage.local.get('sorsa');
   $('key').value = sorsa.key || '';
-  $('on').checked = !!sorsa.enabled;
+  $('on').checked = sorsa.enabled !== false;
+  if (sorsa.key) $('adv').open = true;
+  checkSession();
 }
+async function checkSession() {
+  const st = $('st');
+  st.className = 'st';
+  st.textContent = 'در حال بررسی ورود…';
+  const r = await chrome.runtime.sendMessage({ type: 'sorsaSession' }).catch(() => null);
+  if (r?.ok && r.login) { st.className = 'st ok'; st.textContent = '✓ وارد Sorsa شده‌اید'; $('login').style.display = 'none'; }
+  else { st.className = 'st no'; st.textContent = r?.ok ? 'وارد Sorsa نشده‌اید' : 'به app.sorsa.io دسترسی نیست'; $('login').style.display = ''; }
+}
+$('check').addEventListener('click', checkSession);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkSession(); });
 $('save').addEventListener('click', async () => {
-  const key = $('key').value.trim();
-  if ($('on').checked && !key) return say('اول کلید را وارد کنید.', false);
-  await chrome.storage.local.set({ sorsa: { key, enabled: $('on').checked } });
+  await chrome.storage.local.set({ sorsa: { key: $('key').value.trim(), enabled: $('on').checked } });
   say('ذخیره شد ✓', true);
 });
 $('test').addEventListener('click', async () => {
@@ -69,6 +79,7 @@ async function lookup() {
   }
   box.append(head, bar, ticks, grid, el('h2', '', 'برترین دنبال‌کننده‌ها'));
   if (!top?.ok) { box.append(el('div', 'muted', top?.error || 'خطا')); return; }
+  if (!top.users) return;
   if (!top.users.length) { box.append(el('div', 'muted', 'دنبال‌کننده‌ی امتیازداری پیدا نشد.')); return; }
   for (const u of top.users.slice(0, 20)) {
     const a = el('a', 'tf'); a.href = `https://x.com/${encodeURIComponent(u.username)}`; a.target = '_blank'; a.rel = 'noopener';

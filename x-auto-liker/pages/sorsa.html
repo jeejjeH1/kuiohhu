@@ -16,6 +16,10 @@
     #msg { margin-top: 10px; font-size: 13px; }
     body.embed .wrap { padding: 8px 14px 24px; max-width: none; }
     .card + .card { margin-top: 14px; }
+    .st { font-weight: 700; font-size: 13px; padding: 6px 12px; border-radius: 99px; background: rgba(255,255,255,.06); border: 1px solid var(--card-b); }
+    .st.ok { color: var(--green); border-color: rgba(47,227,154,.4); } .st.no { color: #ffd28a; border-color: rgba(255,173,31,.4); }
+    a.btn { text-decoration: none; color: inherit; }
+    details summary { cursor: pointer; }
     .look { display: flex; gap: 8px; margin-top: 10px; }
     .look .inp { flex: 1; }
     #res { margin-top: 14px; }
@@ -46,16 +50,29 @@
   <div class="wrap">
     <header class="top"><div class="logo">🏅</div><div><h1>امتیاز Sorsa</h1><p>نمایش Sorsa Score روی پروفایل‌ها</p></div></header>
     <section class="card">
-      <h2>کلید API سورسا</h2>
-      <p class="muted" style="font-size:13px;margin:4px 0 10px">کلید را از حساب Sorsa بگیرید. کلید فقط روی همین مرورگر ذخیره می‌شود و فقط به api.sorsa.io فرستاده می‌شود، نه به X.</p>
-      <input id="key" class="inp" type="password" placeholder="Sorsa API key" autocomplete="off" spellcheck="false">
+      <h2>بدون کلید: با حساب Sorsa</h2>
+      <p class="muted" style="font-size:13px;margin:4px 0 10px">کافی است در همین مرورگر یک‌بار وارد app.sorsa.io شوید (حساب رایگان کافی است). اکستنشن صفحه‌ی عمومی Sorsa هر پروفایل را با همان ورود شما باز می‌کند و امتیاز را از آن می‌خواند. رمز و کوکی شما خوانده یا ذخیره نمی‌شود.</p>
+      <div class="row2">
+        <span id="st" class="st">…</span>
+        <a class="btn ghost" id="login" href="https://app.sorsa.io/" target="_blank" rel="noopener">ورود به Sorsa ↗</a>
+        <button class="btn ghost" id="check">بررسی دوباره</button>
+      </div>
       <label class="sw"><input type="checkbox" id="on"> نمایش امتیاز روی پروفایل‌ها</label>
+      <div class="warn">وقتی این گزینه روشن باشد، نام کاربری هر پروفایلی که در X باز می‌کنید برای Sorsa فرستاده می‌شود. نتیجه ۱۲ ساعت ذخیره می‌شود. Sorsa Score یک شاخص تأثیرگذاری است که بیشتر برای حوزه‌ی کریپتو طراحی شده.</div>
+    </section>
+    <section class="card">
+      <details id="adv">
+        <summary><b>کلید API (اختیاری)</b></summary>
+        <p class="muted" style="font-size:13px;margin:8px 0 10px">لازم نیست. فقط اگر وارد Sorsa نشده‌اید، یا صفحه‌ی Sorsa تغییر امتیاز یا برترین دنبال‌کننده‌ها را نداد، از این کلید استفاده می‌شود و از اعتبار آن کم می‌کند. کلید فقط روی همین مرورگر ذخیره و فقط به api.sorsa.io فرستاده می‌شود.</p>
+        <input id="key" class="inp" type="password" placeholder="Sorsa API key" autocomplete="off" spellcheck="false">
+        <div class="row2">
+          <button class="btn ghost" id="test">تست کلید</button>
+        </div>
+      </details>
       <div class="row2">
         <button class="btn" id="save">ذخیره</button>
-        <button class="btn ghost" id="test">تست کلید</button>
       </div>
       <div id="msg"></div>
-      <div class="warn">وقتی این گزینه روشن باشد، نام کاربری هر پروفایلی که باز می‌کنید برای Sorsa فرستاده می‌شود و برای هر پروفایل دو درخواست (امتیاز و تغییر امتیاز) از اعتبار یا سقف کلید شما مصرف می‌کند. برترین دنبال‌کننده‌ها فقط وقتی گرفته می‌شود که خودتان «نمایش» را بزنید. نتیجه ۱۲ ساعت ذخیره می‌شود. Sorsa Score یک شاخص تأثیرگذاری است که بیشتر برای حوزه‌ی کریپتو طراحی شده.</div>
     </section>
     <section class="card">
       <h2>بررسی یک حساب</h2>

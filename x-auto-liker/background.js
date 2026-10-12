@@ -1,3 +1,4 @@
+importScripts('queue-core.js', 'queue-worker.js');
 // Two modes, both using one tab navigated to each link in turn:
 // - manual: the extension only opens the links; the user likes and presses "Next" (popup,
 //   on-page overlay or Alt+N). Event-driven, so it survives service-worker restarts.

@@ -576,5 +576,9 @@ window.XI_DICT = {
  "ورود به Sorsa": "Sign in to Sorsa",
  "برای دیدن دنبال‌کننده‌های برتر بر اساس امتیاز Sorsa «نمایش» را بزنید.": "Press “Show” to see the top followers by Sorsa Score.",
  "باز کردن در Sorsa ↗": "Open on Sorsa ↗",
- "خطای Sorsa {n}": "Sorsa error {n}"
+ "خطای Sorsa {n}": "Sorsa error {n}",
+ "عیب‌یابی": "Troubleshooting",
+ "ذخیره‌ی فایل عیب‌یابی": "Save troubleshooting file",
+ "این فایل را برای سازنده‌ی اکستنشن بفرستید تا خواندن امتیاز درست شود. فقط صفحه‌ی عمومی Sorsa همین حساب در آن است.": "Send this file to the extension's developer so score reading can be fixed. It only contains this account's public Sorsa page.",
+ "عیب‌یابی در تنظیمات Sorsa": "Troubleshoot in Sorsa settings"
 };

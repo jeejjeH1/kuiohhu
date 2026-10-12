@@ -152,6 +152,12 @@
     if (!res?.ok || res.score === null || res.score === undefined) {
       body.innerHTML = `<div class="ss-msg"></div>`;
       body.firstChild.textContent = res?.ok ? 'امتیازی برای این حساب پیدا نشد' : res?.error || 'خطا';
+      const help = document.createElement('button');
+      help.className = 'btn';
+      help.style.marginTop = '10px';
+      help.textContent = 'عیب‌یابی در تنظیمات Sorsa';
+      help.addEventListener('click', () => XAL.openPage('pages/sorsa.html'));
+      body.appendChild(help);
       return;
     }
     const t = tierOf(res.score);

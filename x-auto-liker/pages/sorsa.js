@@ -64,7 +64,7 @@ async function lookup() {
   ]);
   box.textContent = '';
   if (!r?.ok) { box.append(el('div', '', r?.error || 'خطا')); box.firstChild.style.color = '#ff8a95'; return; }
-  if (r.score === null || r.score === undefined) { box.append(el('div', 'muted', 'امتیازی برای این حساب پیدا نشد')); return; }
+  if (r.score === null || r.score === undefined) { box.append(el('div', 'muted', 'امتیازی برای این حساب پیدا نشد')); debugBox(box); return; }
   const t = tierOf(r.score);
   const head = el('div', 'sc-head');
   const info = el('div');
@@ -89,6 +89,27 @@ async function lookup() {
     a.append(img, nm, el('span', 's', u.score !== null ? fmt(u.score) : '—'));
     box.append(a);
   }
+}
+// When no score is found: show what Sorsa returned and let the user save it, so the reader can be fixed.
+async function debugBox(box) {
+  const d = await chrome.runtime.sendMessage({ type: 'sorsaDebug' }).catch(() => null);
+  if (!d) return;
+  const w = el('div', 'dbg');
+  const facts = [
+    `URL: ${d.url}`, `HTTP ${d.status} · ${Math.round(d.size / 1024)} KB · Next data: ${d.flight ? 'yes' : 'no'} · @${d.handle} ×${d.mentions}`,
+    d.rendered ? `Tab: ${d.rendered.url} · ${d.rendered.calls.length} JSON` : '',
+  ].filter(Boolean);
+  w.append(el('b', '', 'عیب‌یابی'), el('pre', '', facts.join('\n')));
+  const btn = el('button', 'btn ghost sm', 'ذخیره‌ی فایل عیب‌یابی');
+  btn.addEventListener('click', () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(d, null, 1)], { type: 'application/json' }));
+    a.download = `sorsa-debug-${d.handle}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  });
+  w.append(el('div', 'muted', 'این فایل را برای سازنده‌ی اکستنشن بفرستید تا خواندن امتیاز درست شود. فقط صفحه‌ی عمومی Sorsa همین حساب در آن است.'), btn);
+  box.append(w);
 }
 $('go').addEventListener('click', lookup);
 $('who').addEventListener('keydown', (e) => { if (e.key === 'Enter') lookup(); });

@@ -58,10 +58,13 @@ async function lookup() {
   box.textContent = '';
   if (!h) { box.append(el('div', 'muted', 'نام کاربری درست نیست.')); return; }
   box.append(el('div', 'muted', 'در حال دریافت…'));
-  const [r, top] = await Promise.all([
-    chrome.runtime.sendMessage({ type: 'sorsaScore', handle: h, manual: true }).catch((e) => ({ ok: false, error: e.message })),
-    chrome.runtime.sendMessage({ type: 'sorsaTop', handle: h }).catch((e) => ({ ok: false, error: e.message })),
-  ]);
+  let r = await chrome.runtime.sendMessage({ type: 'sorsaScore', handle: h, manual: true }).catch((e) => ({ ok: false, error: e.message }));
+  if (r?.ok && r.score !== null && r.score !== undefined) {
+    box.lastChild.textContent = 'در حال دریافت تغییرات و برترین دنبال‌کننده‌ها از Sorsa… (چند ثانیه)';
+    const d = await chrome.runtime.sendMessage({ type: 'sorsaDetails', handle: h }).catch(() => null);
+    if (d?.ok) r = { ...r, week: d.week, month: d.month, top: d.top };
+  }
+  const top = r?.top?.length ? { ok: true, users: r.top } : { ok: false, error: 'برترین دنبال‌کننده‌ها پیدا نشد. می‌توانید آن را در خود Sorsa ببینید.' };
   box.textContent = '';
   if (!r?.ok) { box.append(el('div', '', r?.error || 'خطا')); box.firstChild.style.color = '#ff8a95'; return; }
   if (r.score === null || r.score === undefined) { box.append(el('div', 'muted', 'امتیازی برای این حساب پیدا نشد')); debugBox(box); return; }
@@ -78,7 +81,7 @@ async function lookup() {
     const b = el('div', 'sc-box'); b.append(el('small', '', label), el('b', dcls(v), delta(v))); grid.append(b);
   }
   box.append(head, bar, ticks, grid, el('h2', '', 'برترین دنبال‌کننده‌ها'));
-  if (!top?.ok) { box.append(el('div', 'muted', top?.error || 'خطا')); return; }
+  if (!top?.ok) { box.append(el('div', 'muted', top?.error || 'خطا')); debugBox(box); return; }
   if (!top.users) return;
   if (!top.users.length) { box.append(el('div', 'muted', 'دنبال‌کننده‌ی امتیازداری پیدا نشد.')); return; }
   for (const u of top.users.slice(0, 20)) {
@@ -96,7 +99,7 @@ async function debugBox(box) {
   if (!d) return;
   const w = el('div', 'dbg');
   const facts = [
-    `URL: ${d.url}`, `HTTP ${d.status} · ${Math.round(d.size / 1024)} KB · Next data: ${d.flight ? 'yes' : 'no'} · @${d.handle} ×${d.mentions}`,
+    d.url ? `URL: ${d.url}` : '', d.url ? `HTTP ${d.status} · ${Math.round(d.size / 1024)} KB · Next data: ${d.flight ? 'yes' : 'no'} · @${d.handle} ×${d.mentions}` : '',
     d.rendered ? `Tab: ${d.rendered.url} · ${d.rendered.calls.length} JSON` : '',
   ].filter(Boolean);
   w.append(el('b', '', 'عیب‌یابی'), el('pre', '', facts.join('\n')));

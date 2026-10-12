@@ -602,7 +602,7 @@ function sorsaPick(d) {
 const sorsaUser = (u) => ({
   username: u.username || u.screen_name || u.handle || '', name: u.display_name || u.name || '',
   avatar: u.profile_image_url || u.profile_image_url_https || u.avatar || u.image || '',
-  followers: num(u.followers_count ?? u.followers), score: num(u.score ?? u.sorsa_score ?? u.twitter_score), verified: !!u.verified,
+  followers: num(u.followers_count ?? u.followers), score: num(u.score ?? u.score_value ?? u.sorsa_score ?? u.twitter_score), verified: !!u.verified,
 });
 const sorsaUsers = (list) => list.map(sorsaUser).filter((u) => u.username).sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
 
@@ -626,42 +626,91 @@ function sorsaPageData(html) {
 }
 const deltaKey = (k, period) => period.test(k) && /delta|change|diff|grow|gain/i.test(k);
 // Walks JSON records (page data or API responses) for this handle's score, score changes and top followers.
-function sorsaScan(roots, handle) {
+// React Query records ({ queryKey, state: { data } }) and API responses (wrapped the same way, with the URL as key)
+// give a hint of what a block is. `loose`: everything is about this profile (the background tab of one profile).
+const SORSA_DAY = 86400e3;
+const sorsaTime = (t) => { const n = num(t); if (n !== null) return n < 1e11 ? n * 1000 : n; const d = Date.parse(t); return isFinite(d) ? d : null; };
+// A score history ([{date, score}] or [[ts, value]]) → change over the last 7 and 30 days.
+function sorsaSeries(list) {
+  if (!Array.isArray(list) || list.length < 3) return null;
+  const pts = [];
+  for (const p of list) {
+    if (!p || typeof p !== 'object') continue;
+    const t = sorsaTime(Array.isArray(p) ? p[0] : p.date ?? p.time ?? p.timestamp ?? p.ts ?? p.day ?? p.created_at ?? p.updated_at ?? p.x ?? p.d);
+    const v = num(Array.isArray(p) ? p[1] : p.score ?? p.score_value ?? p.value ?? p.y ?? p.v);
+    if (t !== null && v !== null) pts.push({ t, v });
+  }
+  if (pts.length < 3 || pts.length < list.length * 0.8) return null;
+  pts.sort((x, y) => x.t - y.t);
+  const last = pts[pts.length - 1];
+  const at = (days) => {
+    const target = last.t - days * SORSA_DAY;
+    let p = null;
+    for (const q of pts) if (q.t <= target + SORSA_DAY / 2) p = q;
+    if (!p && pts[0].t - target < 2 * SORSA_DAY) p = pts[0];
+    return p && p !== last ? Math.round((last.v - p.v) * 100) / 100 : null;
+  };
+  return { week: at(7), month: at(30) };
+}
+function sorsaScan(roots, handle, { loose = false } = {}) {
   const h = handle.toLowerCase();
   const out = { score: null, week: null, month: null, top: null };
   const isMe = (o) => [o.screen_name, o.username, o.handle].some((v) => typeof v === 'string' && v.replace(/^@/, '').toLowerCase() === h);
-  const deltas = (o, loose) => {
+  const deltas = (o, lenient) => {
     for (const [k, v] of Object.entries(o)) {
       if (num(v) === null) continue;
-      if (out.week === null && (deltaKey(k, /week|7d|7_d|seven/i) || (loose && /^(week|weekly|7d|d7)$/i.test(k)))) out.week = num(v);
-      if (out.month === null && (deltaKey(k, /month|30d|30_d|thirty/i) || (loose && /^(month|monthly|30d|d30)$/i.test(k)))) out.month = num(v);
+      if (out.week === null && (deltaKey(k, /week|7d|7_d|seven/i) || (lenient && /^(week|weekly|7d|d7)$/i.test(k)))) out.week = num(v);
+      if (out.month === null && (deltaKey(k, /month|30d|30_d|thirty/i) || (lenient && /^(month|monthly|30d|d30)$/i.test(k)))) out.month = num(v);
     }
   };
+  const isUser = (x) => x && typeof x === 'object' && !Array.isArray(x) && (typeof x.screen_name === 'string' || typeof x.username === 'string');
+  const userScore = (x) => num(x.score ?? x.score_value ?? x.sorsa_score ?? x.twitter_score);
+  const lists = [], series = [];
   const seen = new Set();
-  const visit = (node, depth) => {
+  const visit = (node, depth, hint, pk) => {
     if (!node || typeof node !== 'object' || depth > 60 || seen.has(node)) return;
     seen.add(node);
     if (Array.isArray(node.queryKey)) {
       const key = node.queryKey.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join(' ');
       const data = node.state?.data;
-      const aboutMe = key.toLowerCase().includes(h);
-      if (data !== undefined && data !== null) {
-        if (/top.?follow/i.test(key) && aboutMe && !out.top) {
+      const aboutMe = loose || key.toLowerCase().includes(h);
+      if (data !== undefined && data !== null && aboutMe) {
+        if (/top.?follow/i.test(key) && !out.top) {
           const list = Array.isArray(data) ? data : data.users || data.items || data.data || data.results;
           if (Array.isArray(list)) out.top = sorsaUsers(list);
-        } else if (/change|delta|history/i.test(key) && aboutMe && typeof data === 'object') deltas(data, true);
-        else if (/score/i.test(key) && aboutMe && out.score === null) out.score = typeof data === 'object' ? sorsaPick(data) : num(data);
+        } else if (/change|delta/i.test(key) && typeof data === 'object' && !Array.isArray(data)) deltas(data, true);
+        else if (/score/i.test(key) && !/history|chart|dynamic/i.test(key) && out.score === null && !Array.isArray(data)) out.score = typeof data === 'object' ? (isUser(data) && !isMe(data) ? null : sorsaPick(data)) : num(data);
       }
+      hint = key;
     }
-    if (!Array.isArray(node) && isMe(node)) {
+    const ctx = `${hint || ''} ${pk || ''}`;
+    if (Array.isArray(node)) {
+      const users = node.filter(isUser);
+      if (users.length >= 2 && users.length >= node.length * 0.8 && users.some((u) => userScore(u) !== null) && !users.some(isMe)) lists.push({ ctx, list: users });
+      else if (/score|history|chart|dynamic|graph|timeline|stat/i.test(ctx) || loose) { const d = sorsaSeries(node); if (d) series.push({ ctx, d }); }
+    } else if (isMe(node)) {
       if (out.score === null) for (const k of ['score', 'score_value', 'sorsa_score', 'sorsaScore', 'scoreValue', 'twitter_score', 'total_score']) if (num(node[k]) !== null) { out.score = num(node[k]); break; }
       if (out.score === null) for (const [k, v] of Object.entries(node)) if (/score/i.test(k) && !/change|delta|diff|rank|percent|pct|history|prev/i.test(k) && num(v) !== null) { out.score = num(v); break; }
       deltas(node, false);
       for (const [k, v] of Object.entries(node)) if (v && typeof v === 'object' && !Array.isArray(v) && !isMe(v)) deltas(v, /change|delta|diff/i.test(`${k} ${Object.keys(v).join(' ')}`));
-    }
-    for (const v of Array.isArray(node) ? node : Object.values(node)) if (v && typeof v === 'object') visit(v, depth + 1);
+    } else if (/change|delta/i.test(ctx) && loose) deltas(node, true);
+    if (Array.isArray(node)) node.forEach((v) => v && typeof v === 'object' && visit(v, depth + 1, hint, pk));
+    else for (const [k, v] of Object.entries(node)) if (v && typeof v === 'object') visit(v, depth + 1, hint, k);
   };
-  for (const r of roots) visit(r, 0);
+  for (const r of roots) visit(r, 0, '', '');
+  if (!out.top && lists.length) {
+    // Prefer a list labelled as top followers; never one labelled as following / new followers.
+    const notOther = (c) => !/following|follows|friends|new|recent|7d/i.test(c.ctx);
+    const pick = lists.find((c) => /top/i.test(c.ctx) && /follower/i.test(c.ctx) && notOther(c))
+      || lists.find((c) => /follower/i.test(c.ctx) && notOther(c))
+      || (loose && lists.filter(notOther).length === 1 ? lists.find(notOther) : null);
+    if (pick) out.top = sorsaUsers(pick.list);
+  }
+  if ((out.week === null || out.month === null) && series.length) {
+    const d = (series.find((c) => /score/i.test(c.ctx)) || series[0]).d;
+    if (out.week === null) out.week = d.week;
+    if (out.month === null) out.month = d.month;
+  }
   return out;
 }
 const sorsaTextScore = (src) => {
@@ -722,36 +771,41 @@ async function sorsaWeb(handle) {
 // let content/sorsa-hook.js record the site's own JSON responses, read them and the rendered text, close the tab.
 // One tab at a time.
 let sorsaTabQueue = Promise.resolve();
-function sorsaRender(handle) {
+function sorsaRender(handle, { details = false } = {}) {
   const run = async () => {
     const tab = await chrome.tabs.create({ url: `${SORSA_APP}/profile/${encodeURIComponent(handle)}#xal-sorsa`, active: false });
     let best = null, last = null;
     try {
-      for (let i = 0; i < 24; i++) {
+      for (let i = 0; i < (details ? 30 : 24); i++) {
         await new Promise((r) => setTimeout(r, 750));
         const t = await chrome.tabs.get(tab.id).catch(() => null);
         if (!t) break;
         if (t.url && sorsaLoginPage(t.url)) return { ok: false, code: 'login', error: 'برای دیدن امتیاز بدون کلید، در همین مرورگر وارد app.sorsa.io شوید.' };
         if (t.status !== 'complete' && i < 20) continue;
         const [res] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, world: 'MAIN',
-          func: () => ({ log: window.__xalSorsaLog || [], text: (document.body?.innerText || '').slice(0, 30000), url: location.href }) }).catch(() => [null]);
+          // Scrolling lets lazily loaded blocks (top followers, charts) load too.
+          func: (scroll) => { if (scroll) scrollBy(0, innerHeight); return { log: window.__xalSorsaLog || [], text: (document.body?.innerText || '').slice(0, 30000), url: location.href }; },
+          args: [details] }).catch(() => [null]);
         const v = res?.result;
         if (!v) continue;
         last = v;
-        const out = sorsaScan(v.log.map((x) => x.data), handle);
+        const out = sorsaScan(v.log.map((x) => ({ queryKey: [x.url], state: { data: x.data } })), handle, { loose: true });
         if (out.score === null) out.score = sorsaTextScore(v.text);
-        if (out.score !== null) {
-          // Give the page one more round to deliver score changes / top followers, then stop.
-          if (best && best.score === out.score) { best = out; break; }
+        if (out.score !== null || out.top || out.week !== null) {
+          const full = out.top?.length && out.week !== null && out.month !== null;
+          // Give the page one more round to deliver score changes / top followers, then stop (details: wait for them).
+          if (full || (!details && best && best.score === out.score)) { best = out; break; }
           best = out;
         }
       }
     } finally { chrome.tabs.remove(tab.id).catch(() => {}); }
-    if (best) return { ok: true, ...best, top: best.top?.length ? best.top.slice(0, 20) : undefined };
-    if (last) {
+    const missing = !best || (details && !(best.top?.length && best.week !== null && best.month !== null));
+    if (last && missing) {
       const prev = (await chrome.storage.local.get('sorsaDebug')).sorsaDebug || {};
-      await chrome.storage.local.set({ sorsaDebug: { ...prev, rendered: { url: last.url, text: last.text.slice(0, 5000), calls: last.log.map((x) => x.url).slice(0, 40), sample: JSON.stringify(last.log.slice(0, 8)).slice(0, 200000) } } });
+      await chrome.storage.local.set({ sorsaDebug: { ...(prev.handle === handle ? prev : { handle }), rendered: { url: last.url, at: Date.now(), found: best,
+        text: last.text.slice(0, 8000), calls: last.log.map((x) => x.url).slice(0, 60), sample: JSON.stringify(last.log.slice(0, 20)).slice(0, 400000) } } });
     }
+    if (best) return { ok: true, ...best, top: best.top?.length ? best.top.slice(0, 20) : undefined };
     return { ok: true, score: null, week: null, month: null };
   };
   const p = sorsaTabQueue.then(run, run);
@@ -836,6 +890,48 @@ async function sorsaScore(handle, { manual = false, force = false } = {}) {
   return sorsaCached('sorsaCache', handle, force, sorsaFetch);
 }
 const sorsaTop = (handle, force) => sorsaCached('sorsaTopCache', handle, force, sorsaTopFetch);
+// Card details (weekly/monthly change + top followers), on demand when the user opens the card: what we have, then the
+// Sorsa profile in a background tab for what is missing, then the API key if there is one. Remembered for 12 hours.
+const sorsaDetailsBusy = new Map();
+async function sorsaDetails(handle, force) {
+  const k = String(handle).replace(/^@/, '').toLowerCase();
+  if (sorsaDetailsBusy.has(k)) return sorsaDetailsBusy.get(k);
+  const p = (async () => {
+    const { sorsa: cfg = {}, sorsaCache = {}, sorsaTopCache = {} } = await chrome.storage.local.get(['sorsa', 'sorsaCache', 'sorsaTopCache']);
+    const hit = sorsaCache[k];
+    const v = { ...(hit?.v || {}) };
+    if (!v.top?.length && sorsaTopCache[k]?.v?.users?.length) v.top = sorsaTopCache[k].v.users;
+    const complete = () => v.week !== null && v.week !== undefined && v.month !== null && v.month !== undefined && v.top?.length;
+    const fresh = v.detailsAt && Date.now() - v.detailsAt < SORSA_TTL;
+    if (complete() || (fresh && !force)) return { ok: true, ...v };
+    let err = null;
+    if (cfg.source !== 'api' && cfg.render !== false) {
+      const t = await sorsaRender(k, { details: true }).catch((e) => ({ ok: false, error: e.message }));
+      if (t.ok) {
+        for (const f of ['score', 'week', 'month']) if ((v[f] === null || v[f] === undefined) && t[f] !== null && t[f] !== undefined) v[f] = t[f];
+        if (!v.top?.length && t.top?.length) v.top = t.top;
+      } else err = t;
+    }
+    if (cfg.key && !complete()) {
+      const [c, tp] = await Promise.all([
+        v.week === null || v.week === undefined || v.month === null || v.month === undefined ? sorsaApi(cfg.key, k).catch(() => null) : null,
+        !v.top?.length ? sorsaTopApi(cfg.key, k).catch(() => null) : null,
+      ]);
+      if (c?.ok) { v.week ??= c.week; v.month ??= c.month; v.score ??= c.score; }
+      if (tp?.ok && tp.users.length) v.top = tp.users.slice(0, 20);
+    }
+    v.detailsAt = Date.now();
+    if (v.score !== null && v.score !== undefined) {
+      const { sorsaCache: cache = {} } = await chrome.storage.local.get('sorsaCache');
+      cache[k] = { v, at: hit?.at || Date.now() };
+      await chrome.storage.local.set({ sorsaCache: cache });
+    }
+    if (err && v.score === undefined) return err;
+    return { ok: true, ...v };
+  })().finally(() => sorsaDetailsBusy.delete(k));
+  sorsaDetailsBusy.set(k, p);
+  return p;
+}
 
 let missQueue = Promise.resolve();
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -849,6 +945,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
   if (msg.type === 'sorsaScore') {
     sorsaScore(msg.handle, msg).then(sendResponse, (e) => sendResponse({ ok: false, code: 'failed', error: e.message }));
+    return true;
+  }
+  if (msg.type === 'sorsaDetails') {
+    sorsaDetails(msg.handle, !!msg.force).then(sendResponse, (e) => sendResponse({ ok: false, code: 'failed', error: e.message }));
     return true;
   }
   if (msg.type === 'sorsaTop') {

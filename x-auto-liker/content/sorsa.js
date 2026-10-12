@@ -170,8 +170,8 @@
         <div class="ss-box"><small>تغییر هفتگی</small><b class="wk"></b></div>
         <div class="ss-box"><small>تغییر ماهانه</small><b class="mo"></b></div>
       </div>
-      <div class="ss-sec"><span>برترین دنبال‌کننده‌ها</span><button class="ld">نمایش</button></div>
-      <div class="ss-list"><div class="ss-msg">برای دیدن دنبال‌کننده‌های برتر بر اساس امتیاز Sorsa «نمایش» را بزنید.</div></div>
+      <div class="ss-sec"><span>برترین دنبال‌کننده‌ها</span><button class="ld">تازه‌سازی</button></div>
+      <div class="ss-list"></div>
       <div class="ss-foot"></div>
       <a class="ss-open" target="_blank" rel="noopener">باز کردن در Sorsa ↗</a>`;
     body.querySelector('.ss-open').href = `${SORSA_APP}profile/${encodeURIComponent(handle)}`;
@@ -186,11 +186,14 @@
       next.firstChild.textContent = `${XAL.fa(t.toNext)} امتیاز تا سطح بعد:`;
       next.lastChild.textContent = t.next;
     } else next.textContent = 'بالاترین سطح';
-    for (const [sel, v] of [['.wk', res.week], ['.mo', res.month]]) {
-      const el = body.querySelector(sel);
-      el.textContent = v === null || v === undefined ? '—' : delta(v);
-      if (v !== null && v !== undefined) el.className += ` ${dcls(v)}`;
-    }
+    const fill = (r) => {
+      for (const [sel, v] of [['.wk', r.week], ['.mo', r.month]]) {
+        const el = body.querySelector(sel);
+        el.textContent = v === null || v === undefined ? '—' : delta(v);
+        el.className = sel.slice(1) + (v !== null && v !== undefined ? ` ${dcls(v)}` : '');
+      }
+    };
+    fill(res);
     if (res.at) {
       const foot = body.querySelector('.ss-foot');
       foot.innerHTML = '<span>به‌روزرسانی:</span> <span data-no-i18n></span>';
@@ -198,21 +201,28 @@
     }
     const list = body.querySelector('.ss-list');
     const btn = body.querySelector('.ld');
-    let loaded = false;
+    const has = (r) => r.week !== null && r.week !== undefined && r.month !== null && r.month !== undefined && r.top?.length;
+    // Weekly/monthly change and top followers: fetched as soon as the card opens (a background Sorsa tab for a few
+    // seconds if the page didn't include them), then remembered for 12 hours.
     const load = async (force) => {
       btn.disabled = true;
-      list.innerHTML = '<div class="ss-msg">در حال دریافت…</div>';
-      const r = await XAL.bg({ type: 'sorsaTop', handle, force }).catch((e) => ({ ok: false, error: e.message }));
-      renderTop(list, r);
+      btn.textContent = 'در حال دریافت…';
+      if (!res.top?.length || force) list.innerHTML = '<div class="ss-msg">در حال دریافت تغییرات و برترین دنبال‌کننده‌ها از Sorsa… (چند ثانیه)</div>';
+      const r = await XAL.bg({ type: 'sorsaDetails', handle, force }).catch((e) => ({ ok: false, error: e.message }));
+      if (!body.isConnected) return;
+      if (r?.ok) {
+        fill(r);
+        renderTop(list, r.top?.length ? { ok: true, users: r.top } : { ok: false, error: 'برترین دنبال‌کننده‌ها پیدا نشد. می‌توانید آن را در خود Sorsa ببینید.' });
+        res.week = r.week; res.month = r.month; res.top = r.top;
+        document.querySelectorAll(`.xal-sorsa[data-h="${handle.toLowerCase()}"]`).forEach((b) => paint(b, { ...b._res, week: r.week, month: r.month, top: r.top }));
+      } else renderTop(list, r);
       btn.disabled = false;
       btn.textContent = 'تازه‌سازی';
-      loaded = true;
     };
-    btn.addEventListener('click', () => load(loaded));
-    // Came with the Sorsa page, or already in the cache? Show it right away without another request.
-    const cached = (await chrome.storage.local.get('sorsaTopCache')).sorsaTopCache?.[handle.toLowerCase()];
-    const ready = res.top?.length ? { ok: true, users: res.top } : cached && Date.now() - cached.at < 12 * 3600e3 ? { ok: true, ...cached.v } : null;
-    if (ready) { renderTop(list, ready); btn.textContent = 'تازه‌سازی'; loaded = true; }
+    btn.addEventListener('click', () => load(true));
+    if (res.top?.length) renderTop(list, { ok: true, users: res.top });
+    if (has(res)) btn.textContent = 'تازه‌سازی';
+    else load(false);
   }
 
   let timer;

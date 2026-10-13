@@ -154,6 +154,8 @@ const P = {
   rename: '<path d="M4 7V5h16v2M12 5v14M9 19h6"/><path d="M17 15l3 3"/>',
   uppercase: '<path d="M3 18L7 6l4 12M4.5 14h5M14 18V6h4a3 3 0 010 6h-4h5a3 3 0 010 6z"/>',
   line: '<path d="M4 20L20 4"/>',
+  eraser: '<path d="M7 21h10M4.5 14.5l6-6 7 7-4 4H8z"/>',
+  brush: '<path d="M3 21c2-.5 3.5-1.5 5-3l9-9a2.1 2.1 0 00-3-3l-9 9c-1.5 1.5-2.5 3-3 5z"/>',
   film: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/>',
   play: '<path d="M7 4l13 8-13 8z"/>',
   pause: '<path d="M7 4h4v16H7zM13 4h4v16h-4z"/>',

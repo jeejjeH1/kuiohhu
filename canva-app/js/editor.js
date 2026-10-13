@@ -1,11 +1,11 @@
 // The design editor: canvas stage with touch gestures, contextual toolbars and panels.
-import { h, icon, fa, clone, uid, clamp, debounce, toast, pickFile, readFileAsDataURL, normalizeImage } from './util.js';
+import { h, icon, fa, clone, uid, clamp, debounce, toast, pickFile, readFileAsDataURL, normalizeImage, loadImage } from './util.js';
 import {
   FORMATS, FONTS, SHAPES, GRAPHICS, STICKERS, TEXT_PRESETS, TEXT_STYLES, FILTER_PRESETS, DEFAULT_FILTERS,
   makeText, makeShape, makeImage, makeGraphic, makeSticker, makeDrawing, makePage, makeDesign,
 } from './model.js';
 import {
-  renderPage, drawElement, hitTest, fitTextHeight, fontString, setAsyncLoadHandler, loadFonts,
+  renderPage, drawElement, hitTest, fitTextHeight, fontString, toLocal, fitRect, liveMasks, clearMaskCaches, setAsyncLoadHandler, loadFonts,
   thumbnail, shapePath, pageToCanvas, getImage,
 } from './renderer.js';
 import { saveDesign } from './store.js';
@@ -41,6 +41,9 @@ export class Editor {
     this.gesture = null;
     this.guides = [];
     this.lastTap = { id: null, t: 0 };
+    this.maskSize = 60;
+    this.maskOp = 'add';
+    this.maskCanvases = new Map();
     this.hist = [this.snap()];
     this.hi = 0;
     this.saveSoon = debounce(() => this.save(), 700);
@@ -68,6 +71,8 @@ export class Editor {
 
   restore(s) {
     const d = JSON.parse(s);
+    this.maskCanvases.clear();
+    clearMaskCaches();
     Object.assign(this.design, d);
     this.pageIndex = Math.min(this.pageIndex, this.design.pages.length - 1);
     if (!this.sel) this.selectedId = null;
@@ -228,6 +233,18 @@ export class Editor {
     if (this.playT != null) renderFrame(ctx, this.design, this.playT, scale * dpr);
     else renderPage(ctx, this.page, this.design, scale * dpr);
     if (this.liveStroke) drawElement(ctx, this.liveStroke, this.design, scale);
+    for (const el of this.page.elements) {
+      const mc = el.inpaintId && this.maskCanvases.get(el.inpaintId);
+      if (!mc || el.hidden) continue;
+      const r = fitRect(el, this.maskNatural(el).w, this.maskNatural(el).h);
+      ctx.save();
+      ctx.translate(el.x + el.w / 2, el.y + el.h / 2);
+      if (el.rotation) ctx.rotate(el.rotation * Math.PI / 180);
+      if (el.flipX || el.flipY) ctx.scale(el.flipX ? -1 : 1, el.flipY ? -1 : 1);
+      ctx.globalAlpha = 0.55;
+      ctx.drawImage(mc, r.x, r.y, r.w, r.h);
+      ctx.restore();
+    }
     ctx.restore();
 
     // snapping guides
@@ -388,6 +405,7 @@ export class Editor {
     }
     if (this.pointers.size > 2) return;
 
+    if (this.mode === 'erase' || this.mode === 'mask') { this.beginMask(p); return; }
     if (this.mode === 'draw') {
       const d = this.toDesign(p);
       this.gesture = { type: 'draw', pts: [[d.x, d.y]] };
@@ -468,6 +486,17 @@ export class Editor {
       this.view = { ...g.view0, ox: g.view0.ox + p.x - g.p0.x, oy: g.view0.oy + p.y - g.p0.y };
       return this.render();
     }
+    if (g.type === 'maskStroke') {
+      const q = this.imgPoint(g.el, this.toDesign(p));
+      this.strokeMask(g, g.last, q);
+      g.last = q;
+      if (g.kind === 'erase') g.el.eraseVer = (g.el.eraseVer || 0) + 1;
+      return this.render();
+    }
+    if (g.type === 'eraseDraw') {
+      if (this.eraseDrawingsAt(this.toDesign(p))) g.changed = true;
+      return this.render();
+    }
     if (!el) return;
     if (g.type === 'move') {
       if (!g.moved && Math.hypot(p.x - g.p0.x, p.y - g.p0.y) < 4) return;
@@ -505,6 +534,8 @@ export class Editor {
     }
     if (this.pointers.size) return;
     this.gesture = null;
+    if (g.type === 'maskStroke') this.finishMask(g);
+    if (g.type === 'eraseDraw' && g.changed) this.commit();
     if (g.type === 'pan' && !g.moved) { this.select(null); }
     if (g.type === 'move' && g.moved) this.commit();
     if ((g.type === 'resize' || g.type === 'rotate') && g.changed) this.commit();
@@ -797,6 +828,13 @@ export class Editor {
     } else if (this.mode === 'draw') {
       T('check', 'پایان', () => { this.mode = 'select'; this.closeSheet(); this.renderToolbar(); });
       T('palette', 'رنگ قلم', () => this.openDrawSheet());
+    } else if (this.mode === 'erase' || this.mode === 'mask') {
+      T('check', 'پایان', () => this.exitMask());
+      T('size', 'اندازه', () => this.openMaskSize());
+      if (this.mode === 'mask') {
+        T(this.maskOp === 'add' ? 'plus' : 'close', this.maskOp === 'add' ? 'افزودن' : 'کم کردن', () => { this.maskOp = this.maskOp === 'add' ? 'minus' : 'add'; this.renderToolbar(); });
+        T('download', 'ذخیره ماسک', () => this.exportMask());
+      }
     } else if (!el) {
       T('plus', 'افزودن', () => this.openAdd('templates'));
       T('text', 'متن', () => this.openAdd('text'));
@@ -805,6 +843,7 @@ export class Editor {
       T('sticker', 'استیکر', () => this.openAdd('stickers'));
       T('bg', 'پس‌زمینه', () => this.openBackground());
       T('draw', 'قلم', () => { this.mode = 'draw'; this.select(null); this.renderToolbar(); this.openDrawSheet(); });
+      T('eraser', 'پاک‌کن', () => this.enterMask('erase'));
       T('layers', 'لایه‌ها', () => this.openLayers());
       T('pages', 'صفحات', () => this.openPages());
       T('film', 'ویدیو', () => this.openVideo());
@@ -841,6 +880,8 @@ export class Editor {
         T('filter', 'فیلتر', () => this.openFilters());
         T('sparkle', 'تنظیم', () => this.openAdjust());
         T('crop', 'برش', () => this.openCrop());
+        T('eraser', 'پاک‌کن', () => this.enterMask('erase'));
+        T('brush', 'ماسک', () => this.enterMask('mask'));
         T('mask', 'قاب', () => this.openMask());
         T('stroke', 'حاشیه', () => this.openImageBorder());
         T('shadow', 'سایه', () => this.openShadow());
@@ -1509,6 +1550,155 @@ export class Editor {
     this.openSheet('دانلود و اشتراک', body, { tall: true });
   }
 
+  // ---------- eraser & inpaint mask ----------
+  maskNatural(el) {
+    const a = this.design.assets[el.asset];
+    return { w: a?.w || 1, h: a?.h || 1 };
+  }
+
+  // Image-pixel coordinates of a design point (respects rotation, flip, zoom and pan).
+  imgPoint(el, d) {
+    const q = toLocal(el, d.x, d.y);
+    const lx = el.flipX ? -q.x : q.x, ly = el.flipY ? -q.y : q.y;
+    const n = this.maskNatural(el);
+    const r = fitRect(el, n.w, n.h);
+    return { x: (lx - r.x) / r.w * n.w, y: (ly - r.y) / r.h * n.h };
+  }
+
+  enterMask(mode) {
+    if (mode === 'mask' && this.sel?.type !== 'image') { toast('ابتدا یک عکس را انتخاب کنید'); return; }
+    this.mode = mode;
+    this.renderToolbar();
+    this.render();
+    toast(mode === 'erase' ? 'روی عکس یا خط قلم بکشید تا پاک شود' : 'روی عکس بکشید تا ماسک درون‌نقاشی ساخته شود');
+  }
+
+  exitMask() {
+    this.mode = 'select';
+    this.renderToolbar();
+    this.render();
+  }
+
+  async prepareMask(el, kind) {
+    const key = kind === 'erase' ? 'eraseId' : 'inpaintId';
+    if (!el[key]) el[key] = uid();
+    const id = el[key];
+    let c = this.maskCanvases.get(id);
+    if (!c) {
+      const n = this.maskNatural(el);
+      c = document.createElement('canvas');
+      c.width = Math.round(n.w); c.height = Math.round(n.h);
+      const x = c.getContext('2d');
+      const asset = this.design.assets[id];
+      if (asset) {
+        const img = await loadImage(asset.src);
+        x.drawImage(img, 0, 0, c.width, c.height);
+      } else if (kind === 'erase') {
+        x.fillStyle = '#ffffff';
+        x.fillRect(0, 0, c.width, c.height);
+      }
+      this.maskCanvases.set(id, c);
+      liveMasks.set(id, c);
+    }
+    return { id, c };
+  }
+
+  async beginMask(p) {
+    const d = this.toDesign(p);
+    if (this.mode === 'erase') {
+      let target = this.sel && this.sel.type === 'image' ? this.sel : null;
+      if (!target) {
+        const hit = hitTest(this.page, d.x, d.y, 6 / this.view.scale);
+        if (hit?.type === 'drawing') { this.eraseDrawingsAt(d); this.gesture = { type: 'eraseDraw', changed: true }; this.commit(); return; }
+        if (hit?.type === 'image') target = hit;
+      }
+      if (!target) { toast('یک عکس یا خط قلم را انتخاب کنید'); return; }
+      this.select(target.id);
+      const { id, c } = await this.prepareMask(target, 'erase');
+      if (this.mode !== 'erase') return;
+      const last = this.imgPoint(target, d);
+      this.gesture = { type: 'maskStroke', el: target, kind: 'erase', id, c, last, moved: false };
+      this.strokeMask(this.gesture, last, last);
+      this.render();
+      return;
+    }
+    const el = this.sel;
+    if (!el || el.type !== 'image') { toast('ابتدا یک عکس را انتخاب کنید'); return; }
+    const { id, c } = await this.prepareMask(el, 'mask');
+    if (this.mode !== 'mask') return;
+    const last = this.imgPoint(el, d);
+    this.gesture = { type: 'maskStroke', el, kind: 'mask', id, c, last };
+    this.strokeMask(this.gesture, last, last);
+    this.render();
+  }
+
+  // Draws one segment of a brush stroke into the mask canvas (image-pixel space).
+  strokeMask(g, a, b) {
+    const n = this.maskNatural(g.el);
+    const r = fitRect(g.el, n.w, n.h);
+    const px = this.maskSize / (r.w / n.w);
+    const ctx = g.c.getContext('2d');
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = px;
+    if (g.kind === 'erase' || this.maskOp === 'minus') ctx.globalCompositeOperation = 'destination-out';
+    else { ctx.globalCompositeOperation = 'source-over'; ctx.strokeStyle = '#27bbf5'; }
+    ctx.strokeStyle = g.kind === 'erase' ? '#000' : '#27bbf5';
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  finishMask(g) {
+    this.design.assets[g.id] = { src: g.c.toDataURL('image/png'), kind: 'mask', w: g.c.width, h: g.c.height };
+    liveMasks.set(g.id, g.c);
+    this.commit();
+    this.render();
+  }
+
+  // Vector eraser: removes whole strokes the eraser touches.
+  eraseDrawingsAt(d) {
+    const r = this.maskSize / 2;
+    const before = this.page.elements.length;
+    this.page.elements = this.page.elements.filter((e) => {
+      if (e.type !== 'drawing') return true;
+      const rad = r + e.width / 2;
+      return !e.points.some(([x, y]) => Math.hypot(e.x + x * e.w - d.x, e.y + y * e.h - d.y) < rad);
+    });
+    if (this.sel && !this.page.elements.includes(this.sel)) this.selectedId = null;
+    return this.page.elements.length !== before;
+  }
+
+  openMaskSize() {
+    this.openSheet('اندازه قلم', slider('اندازه', { min: 4, max: 300, value: Math.round(this.maskSize), onInput: (v) => { this.maskSize = v; } }));
+  }
+
+  // Black = keep, white = inpaint. Works with external AI tools that take a mask PNG.
+  async exportMask() {
+    const el = this.sel?.type === 'image' ? this.sel : null;
+    const c = el && el.inpaintId && this.maskCanvases.get(el.inpaintId);
+    if (!c) { toast('هنوز ماسکی ساخته نشده است'); return; }
+    const out = document.createElement('canvas');
+    out.width = c.width; out.height = c.height;
+    const tmp = document.createElement('canvas');
+    tmp.width = c.width; tmp.height = c.height;
+    const t = tmp.getContext('2d');
+    t.drawImage(c, 0, 0);
+    t.globalCompositeOperation = 'source-in';
+    t.fillStyle = '#ffffff';
+    t.fillRect(0, 0, tmp.width, tmp.height);
+    const x = out.getContext('2d');
+    x.fillStyle = '#000000';
+    x.fillRect(0, 0, out.width, out.height);
+    x.drawImage(tmp, 0, 0);
+    const blob = await new Promise((res) => out.toBlob(res, 'image/png'));
+    await downloadFiles([new File([blob], (this.design.name || 'mask') + '-mask.png', { type: 'image/png' })]);
+    toast('ماسک ذخیره شد');
+  }
+
   // ---------- playback / animation / video ----------
   pageAt(t) {
     let acc = 0;
@@ -1730,6 +1920,7 @@ export class Editor {
 
   destroy() {
     this.stopPlay(true);
+    clearMaskCaches();
     this.ro?.disconnect();
     window.removeEventListener('keydown', this.keyHandler);
     setAsyncLoadHandler(() => {});

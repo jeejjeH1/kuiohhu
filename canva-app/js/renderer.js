@@ -243,9 +243,43 @@ function drawText(ctx, el, scale) {
   });
 }
 
+// Where an image is drawn inside its element box (cover fit + zoom + pan). Shared with the mask editor.
+export function fitRect(el, nw, nh) {
+  const ir = nw / nh, br = el.w / el.h;
+  let dw, dh;
+  if (ir > br) { dh = el.h; dw = dh * ir; } else { dw = el.w; dh = dw / ir; }
+  dw *= el.zoom; dh *= el.zoom;
+  const ox = (dw - el.w) / 2 * el.panX, oy = (dh - el.h) / 2 * el.panY;
+  return { x: -dw / 2 + ox, y: -dh / 2 + oy, w: dw, h: dh };
+}
+
+// Erase / inpaint masks live in design.assets as PNG; the editor keeps live canvases here.
+export const liveMasks = new Map();
+const composeCache = new Map();
+export function clearMaskCaches() { composeCache.clear(); liveMasks.clear(); }
+
+// Image with its erase mask applied (non-destructive: the original stays in assets).
+function composeErase(el, design) {
+  const img = getImage(design.assets?.[el.asset]?.src || el.src);
+  const m = liveMasks.get(el.eraseId) || getImage(design.assets?.[el.eraseId]?.src);
+  if (!img || !m) return null;
+  const key = el.id + ':' + (el.eraseVer || 0) + ':' + el.asset;
+  let c = composeCache.get(key);
+  if (c) return c;
+  c = document.createElement('canvas');
+  c.width = img.naturalWidth; c.height = img.naturalHeight;
+  const x = c.getContext('2d');
+  x.drawImage(img, 0, 0);
+  x.globalCompositeOperation = 'destination-in';
+  x.drawImage(m, 0, 0, c.width, c.height);
+  if (composeCache.size >= 4) composeCache.delete(composeCache.keys().next().value);
+  composeCache.set(key, c);
+  return c;
+}
+
 function drawImage(ctx, el, design, scale) {
   const src = design.assets?.[el.asset]?.src || el.src;
-  const img = getImage(src);
+  const img = el.eraseId ? composeErase(el, design) : getImage(src);
   const clip = shapePath(el.mask === 'rect' ? 'rect' : el.mask, el.w, el.h, el.mask === 'rect' ? el.radius : 0);
   if (el.shadow?.on) {
     ctx.save();
@@ -260,14 +294,10 @@ function drawImage(ctx, el, design, scale) {
     ctx.fillStyle = '#e4e4ea';
     ctx.fillRect(-el.w / 2, -el.h / 2, el.w, el.h);
   } else {
-    const ir = img.naturalWidth / img.naturalHeight, br = el.w / el.h;
-    let dw, dh;
-    if (ir > br) { dh = el.h; dw = dh * ir; } else { dw = el.w; dh = dw / ir; }
-    dw *= el.zoom; dh *= el.zoom;
-    const ox = (dw - el.w) / 2 * el.panX, oy = (dh - el.h) / 2 * el.panY;
+    const r = fitRect(el, img.naturalWidth || img.width, img.naturalHeight || img.height);
     const fs = filterString(el.filters);
     if (fs !== 'none') ctx.filter = fs;
-    ctx.drawImage(img, -dw / 2 + ox, -dh / 2 + oy, dw, dh);
+    ctx.drawImage(img, r.x, r.y, r.w, r.h);
     ctx.filter = 'none';
   }
   ctx.restore();

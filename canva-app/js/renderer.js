@@ -1,6 +1,9 @@
 // Canvas renderer: draws a page (background + elements). Used both by the
 // on-screen editor and for thumbnails / exports, so what you see is what you get.
-import { GRAPHICS, DEFAULT_FILTERS } from './model.js';
+import { GRAPHICS, DEFAULT_FILTERS, pageDur } from './model.js';
+import { animState } from './anim.js';
+import { iconImage } from './icons.js';
+import { drawLottie } from './lottie.js';
 
 const imgCache = new Map();
 let onAsyncLoad = () => {};
@@ -291,13 +294,18 @@ function drawDrawing(ctx, el) {
   ctx.stroke();
 }
 
-export function drawElement(ctx, el, design, scale = 1) {
+// st: animation state from animState() (null = static). Keeps the editor and video identical.
+export function drawElement(ctx, el, design, scale = 1, st = null) {
   if (el.hidden) return;
+  if (st && st.a <= 0) return;
   ctx.save();
-  ctx.translate(el.x + el.w / 2, el.y + el.h / 2);
-  if (el.rotation) ctx.rotate(el.rotation * Math.PI / 180);
+  ctx.translate(el.x + el.w / 2 + (st ? st.dx : 0), el.y + el.h / 2 + (st ? st.dy : 0));
+  const rot = (el.rotation || 0) + (st ? st.r : 0);
+  if (rot) ctx.rotate(rot * Math.PI / 180);
   if (el.flipX || el.flipY) ctx.scale(el.flipX ? -1 : 1, el.flipY ? -1 : 1);
-  ctx.globalAlpha *= el.opacity;
+  if (st && st.s !== 1) ctx.scale(st.s, st.s);
+  ctx.globalAlpha *= el.opacity * (st ? st.a : 1);
+  if (st && st.b > 0) ctx.filter = `blur(${st.b * scale}px)`;
   const s = scale;
   switch (el.type) {
     case 'text': drawText(ctx, el, s); break;
@@ -343,6 +351,23 @@ export function drawElement(ctx, el, design, scale = 1) {
       break;
     }
     case 'drawing': applyShadow(ctx, el.shadow, s); drawDrawing(ctx, el); break;
+    case 'icon': {
+      const img = iconImage(el);
+      applyShadow(ctx, el.shadow, s);
+      if (img) ctx.drawImage(img, -el.w / 2, -el.h / 2, el.w, el.h);
+      break;
+    }
+    case 'lottie': {
+      applyShadow(ctx, el.shadow, s);
+      const t = st ? st.t : null;
+      const ok = drawLottie(ctx, el.code, t, el.w, el.h, () => onAsyncLoad());
+      if (!ok) {
+        ctx.font = `${Math.min(el.w, el.h) * 0.8}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(String.fromCodePoint(...el.code.split('_').map((c) => parseInt(c, 16))), 0, 0);
+      }
+      break;
+    }
   }
   ctx.restore();
 }
@@ -372,10 +397,20 @@ export function drawBackground(ctx, page, design) {
 }
 
 // Draw a whole page into ctx (which must already be scaled to design units).
-export function renderPage(ctx, page, design, scale = 1, { skipId } = {}) {
+export function renderPage(ctx, page, design, scale = 1, { skipId, time = null } = {}) {
   drawBackground(ctx, page, design);
-  for (const el of page.elements) if (el.id !== skipId) drawElement(ctx, el, design, scale);
+  const D = pageDur(page);
+  for (const el of page.elements) {
+    if (el.id === skipId) continue;
+    let st = null;
+    if (time != null) {
+      st = animState(el, time, D, design.width, design.height) || { a: 1, dx: 0, dy: 0, s: 1, r: 0, b: 0 };
+      st.t = time;
+    }
+    drawElement(ctx, el, design, scale, st);
+  }
 }
+
 
 export function pageToCanvas(page, design, scale = 1, { transparent = false } = {}) {
   const c = document.createElement('canvas');

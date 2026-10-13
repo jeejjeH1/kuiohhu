@@ -12,6 +12,11 @@ import { saveDesign } from './store.js';
 import { exportDesign, downloadFiles, shareFiles } from './export.js';
 import { slider, toggle, segmented, swatch, colorPicker, cssFill, rememberColor } from './ui.js';
 import { TEMPLATES, designFromTemplate, templatePreviewDesign } from './templates.js';
+import { pageDur, makeIcon, makeLottie } from './model.js';
+import { ANIM_IN, ANIM_OUT, ANIM_LOOP, PRESETS, TRANSITIONS, hasAnim } from './anim.js';
+import { ICON_SETS, MONO_SETS, loadIconSet, iconSVG, searchSet } from './icons.js';
+import { ANIM_EMOJI } from './lottie.js';
+import { renderFrame, totalDuration, exportVideo } from './video.js';
 
 const ACCENT = '#8b3dff';
 const TYPE_NAMES = { text: 'متن', shape: 'شکل', image: 'عکس', graphic: 'گرافیک', sticker: 'استیکر', drawing: 'نقاشی' };
@@ -220,7 +225,8 @@ export class Editor {
     ctx.clip();
     ctx.translate(ox, oy);
     ctx.scale(scale, scale);
-    renderPage(ctx, this.page, this.design, scale * dpr);
+    if (this.playT != null) renderFrame(ctx, this.design, this.playT, scale * dpr);
+    else renderPage(ctx, this.page, this.design, scale * dpr);
     if (this.liveStroke) drawElement(ctx, this.liveStroke, this.design, scale);
     ctx.restore();
 
@@ -264,7 +270,7 @@ export class Editor {
     const list = [];
     const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
     const sides = el.type === 'text' ? [[-1, 0], [1, 0]]
-      : ['sticker', 'graphic'].includes(el.type) ? []
+      : ['sticker', 'graphic', 'icon', 'lottie'].includes(el.type) ? []
         : [[-1, 0], [1, 0], [0, -1], [0, 1]];
     const small = b.hw < 26 || b.hh < 26;
     if (!(el.type === 'shape' && (el.shape === 'line' || el.shape === 'dashed'))) {
@@ -364,6 +370,7 @@ export class Editor {
   }
 
   onDown(e) {
+    if (this.playing) { this.stopPlay(); return; }
     this.canvas.setPointerCapture?.(e.pointerId);
     const p = this.pos(e);
     this.pointers.set(e.pointerId, p);
@@ -785,7 +792,9 @@ export class Editor {
     const el = this.sel;
     const items = [];
     const T = (ic, label, fn, on) => items.push({ ic, label, fn, on });
-    if (this.mode === 'draw') {
+    if (this.playing) {
+      T('pause', 'توقف', () => this.stopPlay());
+    } else if (this.mode === 'draw') {
       T('check', 'پایان', () => { this.mode = 'select'; this.closeSheet(); this.renderToolbar(); });
       T('palette', 'رنگ قلم', () => this.openDrawSheet());
     } else if (!el) {
@@ -798,6 +807,7 @@ export class Editor {
       T('draw', 'قلم', () => { this.mode = 'draw'; this.select(null); this.renderToolbar(); this.openDrawSheet(); });
       T('layers', 'لایه‌ها', () => this.openLayers());
       T('pages', 'صفحات', () => this.openPages());
+      T('film', 'ویدیو', () => this.openVideo());
       T('resize', 'تغییر اندازه', () => this.openResize());
     } else {
       const t = el.type;
@@ -825,7 +835,8 @@ export class Editor {
         T('size', 'ضخامت', () => this.openSheet('ضخامت', slider('ضخامت', { min: 1, max: 80, value: el.width, onInput: (v) => this.set((e) => { e.width = v; }, false) })));
         T('shadow', 'سایه', () => this.openShadow());
       }
-      if (t === 'sticker') T('shadow', 'سایه', () => this.openShadow());
+      if (t === 'icon' && MONO_SETS.includes(el.set)) items.push({ swatch: el.color, label: 'رنگ', fn: () => this.openColor('color', 'رنگ آیکون', false) });
+      if (['sticker', 'icon', 'lottie'].includes(t)) T('shadow', 'سایه', () => this.openShadow());
       if (t === 'image') {
         T('filter', 'فیلتر', () => this.openFilters());
         T('sparkle', 'تنظیم', () => this.openAdjust());
@@ -842,6 +853,7 @@ export class Editor {
           this.commit(); this.refreshUI();
         });
       }
+      T('motion', 'انیمیشن', () => this.openAnim());
       T('opacity', 'شفافیت', () => this.openSheet('شفافیت', slider('شفافیت', { min: 0, max: 100, value: Math.round(this.sel.opacity * 100), unit: '٪', onInput: (v) => this.set((e) => { e.opacity = v / 100; }, false) })));
       T('position', 'موقعیت', () => this.openPosition());
       T('flip', 'قرینه', () => this.openFlip());
@@ -976,7 +988,7 @@ export class Editor {
         this.closeSheet();
       } }, html: `<svg viewBox="0 0 24 24" width="38" height="38"><path fill="currentColor" fill-rule="evenodd" d="${d}"/></svg>` }));
     }
-    wrap.append(h('div.cp-title', 'شکل‌ها و خطوط'), sh, h('div.cp-title', 'گرافیک‌ها و آیکون‌ها'), gr);
+    wrap.append(h('div.cp-title', 'شکل‌ها و خطوط'), sh, h('div.cp-title', 'گرافیک‌ها و آیکون‌ها'), gr, h('div.cp-title', 'کتابخانه‌ی آیکون (متن‌باز)'), this.iconPicker());
     search.addEventListener('input', () => {
       const q = search.value.trim().toLowerCase();
       wrap.querySelectorAll('.icon-cell').forEach((b) => { b.hidden = q && !b.dataset.k.toLowerCase().includes(q); });
@@ -985,11 +997,59 @@ export class Editor {
   }
 
   add_stickers() {
+    const wrap = h('div');
+    wrap.append(h('div.cp-title', 'ایموجی متحرک (Noto)'));
+    const anim = h('div.grid-emoji');
+    for (const c of ANIM_EMOJI) {
+      const ch = String.fromCodePoint(parseInt(c, 16));
+      anim.append(h('button', { title: 'متحرک', on: { click: () => { const s = this.baseSize() * 0.6; this.add(makeLottie({ code: c, w: s, h: s })); this.closeSheet(); } } }, ch));
+    }
+    wrap.append(anim, h('div.cp-title', 'استیکر ثابت'));
     const grid = h('div.grid-emoji');
     for (const e of STICKERS) {
       grid.append(h('button', { on: { click: () => { const s = this.baseSize() * 0.7; this.add(makeSticker({ emoji: e, w: s, h: s })); this.closeSheet(); } } }, e));
     }
-    return grid;
+    wrap.append(grid);
+    return wrap;
+  }
+
+  iconPicker() {
+    const box = h('div');
+    const tabs = h('div.tabs.sets');
+    const grid = h('div.grid-icons.icons');
+    const search = h('input.search', { type: 'search', placeholder: 'جستجو: star، heart، arrow…' });
+    let current = 'tabler';
+    let token = 0;
+    const fill = async () => {
+      const my = ++token;
+      grid.innerHTML = '';
+      grid.append(h('p.hint', 'در حال بارگذاری…'));
+      const set = await loadIconSet(current);
+      if (my !== token) return;
+      grid.innerHTML = '';
+      const names = searchSet(set, search.value);
+      if (!names.length) grid.append(h('p.hint', 'آیکونی پیدا نشد'));
+      for (const n of names) {
+        const img = h('img', { src: iconSVG(current, n, '#111111'), alt: n, loading: 'lazy' });
+        grid.append(h('button.icon-cell.ico', { title: n, on: { click: () => {
+          const s = this.baseSize() * 0.55;
+          this.add(makeIcon({ set: current, name: n, color: '#111111', w: s, h: s }));
+          this.closeSheet();
+        } } }, img));
+      }
+    };
+    for (const st of ICON_SETS) {
+      tabs.append(h('button', { 'data-id': st.id, on: { click: () => {
+        current = st.id;
+        [...tabs.children].forEach((b) => b.classList.toggle('on', b.dataset.id === current));
+        fill();
+      } } }, st.label));
+    }
+    tabs.firstChild.classList.add('on');
+    search.addEventListener('input', fill);
+    box.append(tabs, search, grid);
+    setTimeout(fill, 0);
+    return box;
   }
 
   add_uploads() {
@@ -998,7 +1058,7 @@ export class Editor {
       h('button.btn.btn-primary', { on: { click: async () => { const f = await pickFile(); if (f.length) { this.closeSheet(); await this.addImageFiles(f); } } } }, icon('upload', 18), 'آپلود از گالری'),
       h('button.btn', { on: { click: async () => { const f = await pickFile('image/*', 'environment'); if (f.length) { this.closeSheet(); await this.addImageFiles(f); } } } }, icon('camera', 18), 'دوربین'),
     ));
-    const assets = Object.entries(this.design.assets);
+    const assets = Object.entries(this.design.assets).filter(([, a]) => a.kind !== 'audio');
     if (!assets.length) wrap.append(h('p.hint', 'هنوز عکسی آپلود نکرده‌اید. عکس‌های شما در این طرح نگه داشته می‌شوند.'));
     const grid = h('div.grid-thumbs.sq');
     for (const [id, a] of assets) {
@@ -1250,7 +1310,7 @@ export class Editor {
         if ((k === 'w' || k === 'h') && v > 0) {
           const kk = v / e[k];
           if (e.type === 'text' && k === 'w') e.w = v;
-          else if (['sticker', 'graphic'].includes(e.type)) { e.w *= kk; e.h *= kk; } else e[k] = v;
+          else if (['sticker', 'graphic', 'icon', 'lottie'].includes(e.type)) { e.w *= kk; e.h *= kk; } else e[k] = v;
         } else if (k !== 'w' && k !== 'h') e[k] = v;
       }));
       return h('label.num', h('span', label), inp);
@@ -1449,6 +1509,210 @@ export class Editor {
     this.openSheet('دانلود و اشتراک', body, { tall: true });
   }
 
+  // ---------- playback / animation / video ----------
+  pageAt(t) {
+    let acc = 0;
+    for (let i = 0; i < this.design.pages.length; i++) {
+      acc += pageDur(this.design.pages[i]);
+      if (t < acc) return i;
+    }
+    return this.design.pages.length - 1;
+  }
+
+  pageStartT(i) {
+    let acc = 0;
+    for (let k = 0; k < i; k++) acc += pageDur(this.design.pages[k]);
+    return acc;
+  }
+
+  play(startT = 0, { loop = true, endT = null } = {}) {
+    this.stopPlay(true);
+    const total = endT ?? totalDuration(this.design);
+    const t0 = performance.now() - startT;
+    this.playing = true;
+    this.selectedId = null;
+    const tick = () => {
+      if (!this.playing) return;
+      const el = performance.now() - t0;
+      if (!loop && el >= total) return this.stopPlay();
+      this.playT = el % total;
+      const pi = this.pageAt(this.playT);
+      if (pi !== this.pageIndex) { this.pageIndex = pi; this.updatePageChip(); }
+      this.render();
+      this.playRaf = requestAnimationFrame(tick);
+    };
+    tick();
+    this.renderToolbar();
+  }
+
+  stopPlay(silent = false) {
+    if (!this.playing && this.playT == null) return;
+    this.playing = false;
+    cancelAnimationFrame(this.playRaf);
+    this.playT = null;
+    if (!silent) { this.renderToolbar(); this.updatePageChip(); this.render(); }
+  }
+
+  playPage() {
+    const start = this.pageStartT(this.pageIndex);
+    this.play(start, { loop: false, endT: start + pageDur(this.page) });
+  }
+
+  applyAnimToPage() {
+    const tpl = this.sel?.anim || PRESETS[0];
+    const { name, ...rest } = tpl;
+    this.page.elements.forEach((e, i) => {
+      e.anim = { in: { type: 'none', dur: 600, delay: 0 }, out: { type: 'none', dur: 600 }, loop: { type: 'none', dur: 1600 }, ...clone(rest) };
+      if (e.anim.in.type !== 'none') e.anim.in.delay = i * 180;
+    });
+    this.commit();
+    this.render();
+    toast('انیمیشن روی همه‌ی عناصر صفحه اعمال شد');
+  }
+
+  openAnim() {
+    const el = this.sel;
+    if (!el) return;
+    if (!el.anim) el.anim = { in: { type: 'none', dur: 600, delay: 0 }, out: { type: 'none', dur: 600 }, loop: { type: 'none', dur: 1600 } };
+    const A = el.anim;
+    const chips = (key, list) => h('div.chips.scroll', list.map((o) => h('button.chip' + (A[key].type === o.id ? '.on' : ''), {
+      on: { click: () => { this.set((e) => { e.anim[key].type = o.id; }); this.openAnim(); } },
+    }, o.label)));
+    const body = h('div.stack',
+      h('div.cp-title', 'ورود'), chips('in', ANIM_IN),
+      A.in.type !== 'none' && slider('مدت ورود', { min: 0.1, max: 3, step: 0.1, value: A.in.dur / 1000, unit: ' ث', onInput: (v) => this.set((e) => { e.anim.in.dur = v * 1000; }, false) }),
+      A.in.type !== 'none' && slider('تأخیر', { min: 0, max: 5, step: 0.1, value: A.in.delay / 1000, unit: ' ث', onInput: (v) => this.set((e) => { e.anim.in.delay = v * 1000; }, false) }),
+      h('div.cp-title', 'خروج'), chips('out', ANIM_OUT),
+      A.out.type !== 'none' && slider('مدت خروج', { min: 0.1, max: 3, step: 0.1, value: A.out.dur / 1000, unit: ' ث', onInput: (v) => this.set((e) => { e.anim.out.dur = v * 1000; }, false) }),
+      h('div.cp-title', 'حرکت مداوم'), chips('loop', ANIM_LOOP),
+      A.loop.type !== 'none' && slider('سرعت (هر چرخه)', { min: 0.4, max: 5, step: 0.1, value: A.loop.dur / 1000, unit: ' ث', onInput: (v) => this.set((e) => { e.anim.loop.dur = v * 1000; }, false) }),
+      h('div.cp-title', 'قالب‌های آماده'),
+      h('div.chips.scroll', PRESETS.map((pr) => h('button.chip', { on: { click: () => {
+        const { name, ...rest } = pr;
+        this.set((e) => { e.anim = { in: { type: 'none', dur: 600, delay: 0 }, out: { type: 'none', dur: 600 }, loop: { type: 'none', dur: 1600 }, ...clone(rest) }; });
+        this.openAnim();
+      } } }, pr.name))),
+      h('div.row-btns.wrap',
+        h('button.btn', { on: { click: () => this.playPage() } }, icon('play', 18), 'پیش‌نمایش صفحه'),
+        h('button.btn', { on: { click: () => this.applyAnimToPage() } }, icon('motion', 18), 'همه‌ی عناصر (با تأخیر)'),
+        h('button.btn', { on: { click: () => { this.set((e) => { delete e.anim; }); this.closeSheet(); } } }, icon('trash', 18), 'حذف')),
+    );
+    this.openSheet('انیمیشن', body, { tall: true });
+  }
+
+  openVideo() {
+    this.select(null);
+    const opt = { format: 'mp4', fps: 30, size: 1080 };
+    let busy = false;
+    const body = h('div.stack');
+    const draw = () => {
+      body.innerHTML = '';
+      const total = totalDuration(this.design);
+      const playBtn = h('button.btn', { on: { click: () => (this.playing ? this.stopPlay() : this.play(0)) } },
+        icon(this.playing ? 'pause' : 'play', 18), this.playing ? 'توقف' : 'پخش کل ویدیو');
+      body.append(
+        h('div.vid-head', h('span', `مدت کل: ${fa((total / 1000).toFixed(1))} ثانیه · ${fa(this.design.pages.length)} صفحه`), playBtn),
+        h('div.cp-title', 'صفحه‌ها، مدت و گذار'),
+        h('div.vid-pages', this.design.pages.map((p, i) => this.pageRow(p, i, draw))),
+        h('button.btn.full', { on: { click: () => {
+          const bg = clone(this.page.background);
+          this.design.pages.push(makePage({ background: bg.type === 'image' ? { type: 'color', color: '#ffffff' } : bg, transition: { type: 'fade', dur: 500 } }));
+          this.commit(); this.refreshUI(); draw();
+        } } }, icon('plus', 18), 'افزودن صفحه به ویدیو'),
+        h('div.cp-title', 'موسیقی'),
+        this.audioRow(draw),
+        h('div.cp-title', 'خروجی'),
+        segmented([{ label: 'MP4', value: 'mp4' }, { label: 'WebM', value: 'webm' }, { label: 'GIF', value: 'gif' }], opt.format, (v) => { opt.format = v; if (v === 'gif') opt.fps = 12; else if (opt.fps === 12) opt.fps = 30; draw(); }),
+        h('div.cp-title', 'اندازه'),
+        segmented([{ label: '۷۲۰', value: 720 }, { label: '۱۰۸۰', value: 1080 }, { label: 'اصلی', value: 0 }], opt.size, (v) => { opt.size = v; }),
+        h('div.cp-title', 'فریم بر ثانیه'),
+        segmented((opt.format === 'gif' ? [8, 12, 15] : [24, 30, 60]).map((f) => ({ label: fa(f), value: f })), opt.fps, (v) => { opt.fps = v; }),
+        h('p.hint', opt.format === 'gif' ? 'GIF بدون صدا و حداکثر ۴۸۰ پیکسل ساخته می‌شود.' : 'ویدیو با موسیقی (اگر اضافه کرده باشید) ساخته می‌شود. نیاز به مرورگر جدید با WebCodecs دارد.'),
+        this.exportBar(opt, () => busy, (v) => { busy = v; }),
+      );
+    };
+    draw();
+    this.openSheet('ویدیو و انیمیشن', body, { tall: true, onClose: () => this.stopPlay() });
+  }
+
+  pageRow(p, i, redraw) {
+    const img = h('img', { alt: '' });
+    img.src = pageToCanvas(p, this.design, 120 / Math.max(this.design.width, this.design.height)).toDataURL('image/jpeg', 0.7);
+    const tr = p.transition?.type || 'none';
+    return h('div.vid-row',
+      img,
+      h('div.vid-info',
+        h('div.vid-top', h('span', `صفحه ${fa(i + 1)}`), h('button.ib', { title: 'حذف', disabled: this.design.pages.length < 2, on: { click: () => {
+          if (!confirm('این صفحه حذف شود؟')) return;
+          this.design.pages.splice(i, 1); this.pageIndex = Math.min(this.pageIndex, this.design.pages.length - 1);
+          this.commit(); this.refreshUI(); redraw();
+        } } }, icon('trash', 16))),
+        slider('مدت', { min: 0.5, max: 15, step: 0.5, value: pageDur(p) / 1000, unit: ' ث',
+          onInput: (v) => { p.duration = v * 1000; }, onChange: () => { this.commit(); redraw(); } }),
+        i > 0 && h('label.sel-row', h('span', 'گذار ورود'), h('select', { on: { change: (e) => {
+          p.transition = { type: e.target.value, dur: 500 };
+          this.commit(); redraw();
+        } } }, TRANSITIONS.map((t) => h('option', { value: t.id, selected: tr === t.id }, t.label)))),
+      ),
+    );
+  }
+
+  audioRow(redraw) {
+    const entry = Object.entries(this.design.assets).find(([, a]) => a.kind === 'audio');
+    if (entry) {
+      return h('div.row-btns',
+        h('span.aud-name', icon('music', 18), h('span', entry[1].name || 'موسیقی')),
+        h('button.btn', { on: { click: () => { delete this.design.assets[entry[0]]; this.commit(); redraw(); } } }, icon('trash', 16), 'حذف'));
+    }
+    return h('div.row-btns', h('button.btn', { on: { click: async () => {
+      const [f] = await pickFile('audio/*');
+      if (!f) return;
+      if (f.size > 25e6) { toast('فایل صوتی بزرگ‌تر از ۲۵ مگابایت است'); return; }
+      const src = await readFileAsDataURL(f);
+      this.design.assets[uid()] = { src, kind: 'audio', name: f.name };
+      this.commit(); redraw();
+    } } }, icon('upload', 18), 'افزودن موسیقی (MP3 / M4A / WAV)'));
+  }
+
+  exportBar(opt, isBusy, setBusy) {
+    const bar = h('div.prog-bar', h('div.prog-fill'));
+    const status = h('p.hint', '');
+    const fill = bar.firstChild;
+    const run = async (share) => {
+      if (isBusy()) return;
+      setBusy(true);
+      this.stopPlay();
+      status.textContent = 'در حال ساخت… لطفاً صفحه را نبندید';
+      fill.style.width = '0%';
+      try {
+        const audioEntry = Object.values(this.design.assets).find((a) => a.kind === 'audio');
+        const longEdge = Math.max(this.design.width, this.design.height);
+        const scale = opt.size ? Math.min(1, opt.size / longEdge) : 1;
+        const file = await exportVideo(this.design, {
+          format: opt.format, fps: opt.fps, scale,
+          audio: opt.format === 'gif' ? null : audioEntry?.src || null,
+          onProgress: (p) => { fill.style.width = Math.round(p * 100) + '%'; },
+        });
+        if (share) {
+          const ok = await shareFiles([file], this.design.name).catch((e) => { if (e?.name === 'AbortError') return true; throw e; });
+          if (!ok) await downloadFiles([file]);
+        } else await downloadFiles([file]);
+        status.textContent = `آماده شد: ${file.name} (${(file.size / 1048576).toFixed(1)} مگابایت)`;
+        toast('ویدیو ساخته شد ✓');
+      } catch (e) {
+        console.error(e);
+        status.textContent = 'خطا: ' + (e?.message || 'ساخت ویدیو انجام نشد');
+      } finally {
+        setBusy(false);
+      }
+    };
+    return h('div.stack',
+      h('div.row-btns',
+        h('button.btn.btn-primary', { on: { click: () => run(false) } }, icon('download', 18), 'ساخت و دانلود'),
+        h('button.btn', { on: { click: () => run(true) } }, icon('share', 18), 'اشتراک')),
+      bar, status);
+  }
+
   rename() {
     const n = prompt('نام طرح', this.design.name);
     if (n && n.trim()) {
@@ -1465,6 +1729,7 @@ export class Editor {
   }
 
   destroy() {
+    this.stopPlay(true);
     this.ro?.disconnect();
     window.removeEventListener('keydown', this.keyHandler);
     setAsyncLoadHandler(() => {});

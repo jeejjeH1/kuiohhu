@@ -1,9 +1,11 @@
 // Offline support: app shell is cached on install, fonts are cached as they load.
-const VERSION = 'tarhsaz-v1';
+const VERSION = 'tarhsaz-v2';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
   'js/app.js', 'js/home.js', 'js/editor.js', 'js/renderer.js', 'js/model.js',
   'js/templates.js', 'js/store.js', 'js/export.js', 'js/ui.js', 'js/util.js',
+  'js/anim.js', 'js/icons.js', 'js/lottie.js', 'js/video.js', 'vendor/lottie.min.js',
+  'vendor/mp4-muxer.mjs', 'vendor/webm-muxer.mjs', 'vendor/gifenc.mjs', 'data/icons/index.json',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
 ];
 

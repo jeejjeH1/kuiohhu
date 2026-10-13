@@ -186,8 +186,18 @@ export const FILTER_PRESETS = [
   { name: 'نگاتیو', f: { invert: 100 } },
 ];
 
+export const pageDur = (p) => p.duration || 3000;
+
 export function makePage(o = {}) {
-  return { id: uid(), background: { type: 'color', color: '#ffffff' }, elements: [], ...o };
+  return { id: uid(), background: { type: 'color', color: '#ffffff' }, elements: [], duration: 3000, transition: { type: 'none', dur: 500 }, ...o };
+}
+
+export function makeIcon(o = {}) {
+  return base({ type: 'icon', set: 'tabler', name: 'star', color: '#111111', w: 240, h: 240, ...o });
+}
+
+export function makeLottie(o = {}) {
+  return base({ type: 'lottie', code: '1f600', w: 260, h: 260, ...o });
 }
 
 export function makeDesign({ name = 'طرح بدون عنوان', w, h, pages, assets } = {}) {

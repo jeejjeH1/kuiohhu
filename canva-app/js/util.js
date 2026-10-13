@@ -154,6 +154,11 @@ const P = {
   rename: '<path d="M4 7V5h16v2M12 5v14M9 19h6"/><path d="M17 15l3 3"/>',
   uppercase: '<path d="M3 18L7 6l4 12M4.5 14h5M14 18V6h4a3 3 0 010 6h-4h5a3 3 0 010 6z"/>',
   line: '<path d="M4 20L20 4"/>',
+  film: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/>',
+  play: '<path d="M7 4l13 8-13 8z"/>',
+  pause: '<path d="M7 4h4v16H7zM13 4h4v16h-4z"/>',
+  motion: '<path d="M3 12h4l3-7 4 14 3-7h4"/>',
+  music: '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
   brand: '<path d="M12 2l3 7h7l-5.5 4.5L18.5 21 12 16.5 5.5 21l2-7.5L2 9h7z"/>',
 };
 export function icon(name, size = 22) {

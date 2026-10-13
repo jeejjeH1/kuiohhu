@@ -1,0 +1,37 @@
+[
+ {
+  "id": "tabler",
+  "name": "Tabler (خطی)",
+  "file": "tabler.json",
+  "count": 6286,
+  "pkg": "@iconify-json/tabler"
+ },
+ {
+  "id": "ph",
+  "name": "Phosphor",
+  "file": "ph.json",
+  "count": 9161,
+  "pkg": "@iconify-json/ph"
+ },
+ {
+  "id": "flat",
+  "name": "رنگی ساده",
+  "file": "flat.json",
+  "count": 329,
+  "pkg": "@iconify-json/flat-color-icons"
+ },
+ {
+  "id": "fluent",
+  "name": "ایموجی Fluent",
+  "file": "fluent.json",
+  "count": 3174,
+  "pkg": "@iconify-json/fluent-emoji-flat"
+ },
+ {
+  "id": "brands",
+  "name": "برندها",
+  "file": "brands.json",
+  "count": 3739,
+  "pkg": "@iconify-json/simple-icons"
+ }
+]

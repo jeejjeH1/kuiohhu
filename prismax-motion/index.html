@@ -1,0 +1,209 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>PrismaX Motion</title>
+<link rel="stylesheet" href="assets/fonts.css">
+<script type="importmap">{"imports":{"three":"./assets/three.module.min.js"}}</script>
+<script src="assets/logo-paths.js"></script>
+<style>
+  :root {
+    --cream: #DFD8D0; --paper: #EEE9E3; --white: #FFFFFF; --black: #202020; --ink: #0C0B0A;
+    --gold: #B9986A; --bronze: #B56654; --brown: #7A6B5A;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--ink); }
+  body { font-family: 'Instrument Sans', sans-serif; color: var(--cream); -webkit-font-smoothing: antialiased; }
+  #stage { position: absolute; inset: 0; overflow: hidden; background: var(--ink); }
+  #shake { position: absolute; inset: 0; }
+  .layer { position: absolute; inset: 0; }
+  .abs { position: absolute; }
+  canvas.layer { width: 1920px; height: 1080px; }
+  .serif { font-family: 'Instrument Serif', serif; font-weight: 400; letter-spacing: -0.02em; line-height: 1.02; white-space: nowrap; }
+  .mono { font-family: 'IBM Plex Mono', monospace; font-weight: 400; text-transform: uppercase; letter-spacing: .28em; white-space: nowrap; }
+  .sans { font-family: 'Instrument Sans', sans-serif; }
+  .word { display: inline-block; white-space: pre; will-change: transform, opacity, filter; }
+  .w-gold { color: var(--gold); font-style: italic; }
+  .w-bronze { color: var(--bronze); font-style: italic; }
+  .w-it { font-style: italic; }
+  .w-muted { opacity: .45; }
+  .center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; }
+
+  /* HUD */
+  #hud { position: absolute; inset: 0; pointer-events: none; }
+  .corner { position: absolute; width: 34px; height: 34px; border-color: currentColor; border-style: solid; border-width: 0; opacity: .55; }
+  #hud .chapter { position: absolute; left: 76px; top: 58px; font-size: 15px; }
+  #hud .chapter b { font-weight: 500; color: var(--gold); margin-right: 18px; }
+  #hud .tc { position: absolute; right: 76px; top: 58px; font-size: 15px; text-align: right; }
+  #hud .rec { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--bronze); margin-right: 12px; transform: translateY(-1px); }
+  #hud .bl { position: absolute; left: 76px; bottom: 58px; font-size: 14px; }
+  #hud .br { position: absolute; right: 76px; bottom: 58px; font-size: 14px; text-align: right; }
+  #prog { position: absolute; left: 76px; right: 76px; bottom: 40px; height: 1px; background: currentColor; opacity: .18; }
+  #progFill { position: absolute; left: 76px; bottom: 40px; height: 1px; background: var(--gold); }
+
+  .tag {
+    position: absolute; font-family: 'IBM Plex Mono', monospace; font-size: 15px; letter-spacing: .2em; text-transform: uppercase; white-space: nowrap;
+    padding: 9px 14px 8px; border: 1px solid currentColor; border-radius: 6px; background: rgba(12,11,10,.55); backdrop-filter: blur(6px);
+  }
+  .tag.light { background: rgba(238,233,227,.75); }
+  .chip {
+    position: absolute; padding: 15px 28px; border-radius: 14px; background: var(--black); color: var(--paper);
+    font-family: 'Instrument Sans'; font-weight: 500; font-size: 30px; white-space: nowrap; box-shadow: 0 18px 40px rgba(32,32,32,.18);
+  }
+  .card {
+    position: absolute; width: 210px; height: 138px; border-radius: 16px; background: #fff; border: 1px solid #D5CCC1;
+    box-shadow: 0 14px 34px rgba(60,45,30,.10); overflow: hidden;
+  }
+  .card svg { position: absolute; left: 0; top: 0; }
+  .card .ep { position: absolute; left: 16px; bottom: 12px; font-family: 'IBM Plex Mono'; font-size: 12px; letter-spacing: .18em; color: var(--brown); }
+  .card .score { position: absolute; right: 12px; top: 12px; font-family: 'IBM Plex Mono'; font-size: 13px; letter-spacing: .1em; padding: 4px 8px; border-radius: 5px; color: #fff; }
+  .mini { position: absolute; width: 112px; height: 74px; border-radius: 10px; background: #fff; border: 1px solid #D5CCC1; overflow: hidden; }
+  .mini i { position: absolute; left: 50%; top: 44%; width: 22px; height: 22px; margin: -11px 0 0 -11px; display: block; }
+  .mini span { position: absolute; left: 0; right: 0; bottom: 7px; text-align: center; font-family: 'IBM Plex Mono'; font-size: 9px; letter-spacing: .16em; color: var(--brown); }
+  #grain { mix-blend-mode: overlay; opacity: .11; pointer-events: none; }
+  #vignette { pointer-events: none; background: radial-gradient(ellipse at center, rgba(0,0,0,0) 52%, rgba(0,0,0,.62) 100%); }
+  #leak { pointer-events: none; mix-blend-mode: screen; }
+  #flash { background: #fff; opacity: 0; pointer-events: none; }
+  .bar { position: absolute; left: 0; width: 1920px; background: #000; }
+  svg { overflow: visible; }
+</style>
+</head>
+<body>
+<div id="stage"><div id="shake">
+  <canvas id="bg2d" class="layer" width="1920" height="1080"></canvas>
+  <canvas id="c3" class="layer" width="1920" height="1080"></canvas>
+  <div id="paper" class="layer" style="background:radial-gradient(ellipse at 50% 45%, #E9E3DB 0%, #DFD8D0 60%, #D3CABF 100%);opacity:0"></div>
+  <div id="dim" class="layer" style="background:#0C0B0A;opacity:0"></div>
+  <canvas id="fx" class="layer" width="1920" height="1080"></canvas>
+
+  <!-- (01) question -->
+  <div id="q" class="layer">
+    <div id="qCount" class="mono abs" style="left:0;width:1920px;text-align:center;top:930px;font-size:16px;color:var(--cream)"></div>
+    <div id="q1a" class="serif center" style="top:452px;font-size:124px;color:#F2EEE8"></div>
+    <div id="q1b" class="serif center" style="top:590px;font-size:124px;color:#F2EEE8"></div>
+    <div id="q2" class="serif center" style="top:530px;font-size:190px;color:#F2EEE8"></div>
+  </div>
+
+  <!-- (02) quantity -->
+  <div id="r" class="layer">
+    <div id="rScrim" class="layer" style="background:linear-gradient(20deg, rgba(12,11,10,.85) 0%, rgba(12,11,10,.55) 30%, rgba(12,11,10,0) 55%)"></div>
+    <div id="r1a" class="serif abs" style="left:120px;top:742px;font-size:96px;color:#F2EEE8"></div>
+    <div id="r1b" class="serif abs" style="left:120px;top:842px;font-size:96px;color:#F2EEE8"></div>
+    <div id="r2pre" class="sans abs" style="left:124px;top:690px;font-size:28px;color:var(--cream);letter-spacing:.01em"></div>
+    <div id="r2a" class="serif abs" style="left:120px;top:742px;font-size:84px;color:#F2EEE8"></div>
+    <div id="r2b" class="serif abs" style="left:120px;top:832px;font-size:84px;color:#F2EEE8"></div>
+    <div id="r2c" class="serif abs" style="left:120px;top:922px;font-size:84px;color:#F2EEE8"></div>
+    <div id="tagGhost" class="tag" style="color:var(--bronze)"></div>
+    <div id="tagDrop" class="tag" style="color:var(--bronze)"></div>
+    <div id="tagGrid" class="tag" style="color:var(--bronze)"></div>
+    <div id="r3" class="serif center" style="top:470px;font-size:150px;color:#F2EEE8"></div>
+    <svg id="r3chart" class="abs" style="left:560px;top:640px" width="800" height="240"></svg>
+  </div>
+
+  <!-- (03) quality -->
+  <div id="g" class="layer" style="color:var(--black)">
+    <div id="g1a" class="serif abs" style="left:120px;top:250px;font-size:150px"></div>
+    <div id="g1b" class="serif abs" style="left:120px;top:410px;font-size:150px"></div>
+    <div id="g1c" class="serif abs" style="left:120px;top:570px;font-size:150px"></div>
+    <div id="g1la" class="mono abs" style="left:126px;top:226px;font-size:15px;color:var(--brown)"></div>
+    <div id="g1lb" class="mono abs" style="left:126px;top:386px;font-size:15px;color:var(--brown)"></div>
+    <div id="g1lc" class="mono abs" style="left:126px;top:546px;font-size:15px;color:var(--brown)"></div>
+    <div id="g1d" class="serif abs" style="left:124px;top:760px;font-size:64px;color:var(--brown)"></div>
+    <div id="tagTarget" class="tag light" style="color:var(--black)"></div>
+    <div id="gObjTags"></div>
+    <div id="g2a" class="serif abs" style="left:120px;top:850px;font-size:84px"></div>
+    <div id="chips"></div>
+    <div id="g2b" class="serif abs" style="left:120px;top:850px;font-size:84px"></div>
+    <div id="tagKnot" class="tag light"></div>
+  </div>
+
+  <!-- (04) physical world -->
+  <div id="p" class="layer">
+    <div id="p1" class="serif center" style="top:250px;font-size:104px;color:#F2EEE8"></div>
+    <div id="p2a" class="serif center" style="top:836px;font-size:76px;color:#F2EEE8"></div>
+    <div id="p2b" class="serif center" style="top:836px;font-size:76px;color:#F2EEE8"></div>
+    <div id="p2c" class="serif center" style="top:836px;font-size:76px;color:#F2EEE8"></div>
+    <div id="envLab" class="mono abs" style="left:76px;top:170px;font-size:18px;color:var(--cream)"></div>
+    <div id="poseLab" class="tag" style="color:var(--gold)"></div>
+  </div>
+
+  <!-- (05) prismax -->
+  <div id="x" class="layer">
+    <div id="logoBig" class="abs" style="left:460px;top:404px;width:1000px;height:245px;color:#EEE9E3"></div>
+    <div id="logoSub" class="mono abs" style="left:0;width:1920px;text-align:center;top:700px;font-size:16px;color:var(--cream)"></div>
+    <div id="pipe" class="layer" style="color:var(--black)">
+      <div id="logoSmall" class="abs" style="left:810px;top:96px;width:300px;height:74px;color:var(--black)"></div>
+      <div id="st1" class="mono abs" style="left:150px;top:268px;font-size:16px"></div>
+      <div id="st2" class="mono abs" style="left:860px;top:268px;font-size:16px"></div>
+      <div id="st3" class="mono abs" style="left:1500px;top:268px;font-size:16px"></div>
+      <div id="gate" class="abs" style="left:958px;top:330px;width:3px;height:420px;background:var(--gold);box-shadow:0 0 24px var(--gold), 0 0 6px var(--gold)"></div>
+      <div id="cards"></div>
+      <div id="node" class="abs" style="left:1500px;top:390px;width:300px;height:300px">
+        <svg width="300" height="300" style="position:absolute;left:0;top:0">
+          <circle cx="150" cy="150" r="146" fill="none" stroke="#B9986A" stroke-width="1.5" stroke-dasharray="4 10" id="nodeRing"/>
+          <circle cx="150" cy="150" r="118" fill="#202020" id="nodeCore"/>
+        </svg>
+        <div class="serif" style="position:absolute;left:0;width:300px;top:110px;text-align:center;font-size:58px;color:#EEE9E3;font-style:italic">Physical AI</div>
+        <div class="mono" style="position:absolute;left:0;width:300px;top:186px;text-align:center;font-size:11px;color:var(--gold)" id="nodeCount"></div>
+      </div>
+      <div id="realTag" class="mono abs" style="left:1500px;top:742px;width:300px;text-align:center;font-size:15px;color:var(--brown)"></div>
+      <div id="x2a" class="serif center" style="top:860px;font-size:66px"></div>
+      <div id="x2b" class="serif center" style="top:940px;font-size:66px"></div>
+    </div>
+  </div>
+
+  <!-- (06) balance -->
+  <div id="b" class="layer" style="color:var(--black)">
+    <div id="minis"></div>
+    <div id="lone" class="card" style="left:855px;top:300px"></div>
+    <div id="b1" class="serif center" style="top:640px;font-size:124px"></div>
+    <div id="b2bg" class="abs" style="left:0;top:780px;width:1920px;height:300px;background:linear-gradient(180deg,rgba(223,216,208,0),rgba(223,216,208,.96) 40%)"></div>
+    <div id="b2a" class="serif center" style="top:880px;font-size:64px"></div>
+    <div id="b2b" class="serif center" style="top:955px;font-size:64px"></div>
+    <svg id="tri" class="layer" width="1920" height="1080"></svg>
+    <div id="b3" class="serif center" style="top:160px;font-size:88px"></div>
+    <div id="vQ" class="abs" style="text-align:center;width:500px"><div class="serif" style="font-size:72px">Quality</div><div class="mono" style="font-size:13px;color:var(--brown);margin-top:8px">Accurate · Relevant</div></div>
+    <div id="vN" class="abs" style="text-align:center;width:500px"><div class="serif" style="font-size:72px">Quantity</div><div class="mono" style="font-size:13px;color:var(--brown);margin-top:8px">Scale · Coverage</div></div>
+    <div id="vD" class="abs" style="text-align:center;width:500px"><div class="serif" style="font-size:72px">Diversity</div><div class="mono" style="font-size:13px;color:var(--brown);margin-top:8px">Tasks · Worlds</div></div>
+    <div id="balLab" class="mono abs" style="font-size:14px;color:var(--bronze);width:300px;text-align:center"></div>
+  </div>
+
+  <!-- (07) future -->
+  <div id="f" class="layer">
+    <div id="f1a" class="serif center" style="top:430px;font-size:92px;color:#F2EEE8"></div>
+    <div id="f1b" class="serif center" style="top:560px;font-size:92px;color:#F2EEE8"></div>
+    <div id="f2a" class="serif center" style="top:400px;font-size:92px;color:#F2EEE8"></div>
+    <div id="f2b" class="serif center" style="top:530px;font-size:120px;color:#F2EEE8"></div>
+    <div id="f2c" class="serif center" style="top:665px;font-size:92px;color:#F2EEE8"></div>
+  </div>
+
+  <!-- end card -->
+  <div id="end" class="layer" style="background:var(--cream);color:var(--black)">
+    <div id="endLogo" class="abs" style="left:450px;top:376px;width:1020px;height:250px"></div>
+    <div id="endDot" class="abs" style="background:var(--black)"></div>
+    <div id="endTag" class="serif center" style="top:720px;font-size:60px;color:var(--brown)"></div>
+    <div id="endUrl" class="mono abs" style="left:0;width:1920px;text-align:center;top:800px;font-size:18px;color:var(--black)"></div>
+  </div>
+
+  <canvas id="glow" class="layer" width="1920" height="1080" style="mix-blend-mode:screen"></canvas>
+  <div id="leak" class="layer"></div>
+  <div id="vignette" class="layer"></div>
+  <div id="hud">
+    <div class="corner" style="left:40px;top:40px;border-left-width:1px;border-top-width:1px"></div>
+    <div class="corner" style="right:40px;top:40px;border-right-width:1px;border-top-width:1px"></div>
+    <div class="corner" style="left:40px;bottom:40px;border-left-width:1px;border-bottom-width:1px"></div>
+    <div class="corner" style="right:40px;bottom:40px;border-right-width:1px;border-bottom-width:1px"></div>
+    <div class="chapter mono" id="chap"></div>
+    <div class="tc mono" id="tc"></div>
+    <div class="bl mono" id="hudBL"></div>
+    <div class="br mono" id="hudBR"></div>
+    <div id="prog"></div><div id="progFill"></div>
+  </div>
+  <div id="barT" class="bar" style="top:0;height:0"></div>
+  <div id="barB" class="bar" style="bottom:0;height:0"></div>
+  <canvas id="grain" class="layer" width="1920" height="1080"></canvas>
+  <div id="flash" class="layer"></div>
+</div></div>
+<script type="module" src="js/motion.js"></script>
+</body>
+</html>

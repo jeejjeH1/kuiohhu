@@ -1,0 +1,16 @@
+q1|Does collecting more data... always lead to smarter AI?
+q2|Not necessarily.
+r1|Imagine a robot, performing the same task, thousands of times.
+r2|But the data is full of incorrect movements, poor execution, and repetitive experiences.
+r3|More data doesn't automatically mean better learning.
+g1|Accurate, diverse, and relevant data is different.
+g2|It teaches AI useful skills, and helps it perform in situations it has never seen.
+p1|In robotics, this matters even more.
+p2|Here, AI must interact with the physical world. Manipulate objects. And adapt to environments that never stop changing.
+x1|This is where Prisma X comes in.
+x2|Collecting and evaluating the robotics data that trains Physical AI, for the real world.
+b1|But quality alone isn't enough.
+b2|Models also need enough data, and diverse experience, to learn a wide range of skills.
+b3|The real challenge is balance. Quality. Quantity. Diversity.
+f1|The future of robotics AI won't depend only on building larger models.
+f2|It will depend on the quality of the experiences they learn from.

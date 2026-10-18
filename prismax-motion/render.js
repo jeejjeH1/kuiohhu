@@ -33,7 +33,7 @@ async function renderRange(page, f0, f1, out) {
     '-c:v', 'libx264', '-preset', 'slow', '-crf', '15', '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-r', String(FPS), out], { stdio: ['pipe', 'inherit', 'inherit'] });
   for (let f = f0; f < f1; f++) {
     await page.evaluate(t => window.render(t), f / FPS);
-    const buf = await page.screenshot({ type: 'jpeg', quality: 95 });
+    const buf = await page.screenshot({ type: 'jpeg', quality: 95, timeout: 0 });   // motion-blurred frames can take >30s under load
     if (!ff.stdin.write(buf)) await new Promise(r => ff.stdin.once('drain', r));
   }
   ff.stdin.end();
@@ -52,7 +52,9 @@ async function video(workers, chunkFrames = 60) {
     const page = await openPage(browser);
     while (next < chunks.length) {
       const [f0, f1, out] = chunks[next++];
+      if (fs.existsSync(out + '.done')) { done++; continue; }   // resume an interrupted render
       await renderRange(page, f0, f1, out);
+      fs.writeFileSync(out + '.done', '');
       console.log(`chunk ${++done}/${chunks.length} (frames ${f0}-${f1})`);
     }
     await browser.close();
@@ -60,7 +62,7 @@ async function video(workers, chunkFrames = 60) {
   await Promise.all(Array.from({ length: workers }, worker));
   fs.writeFileSync(path.join(outDir, 'parts.txt'), chunks.map(c => `file '${c[2]}'`).join('\n'));
   await new Promise(r => spawn('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', path.join(outDir, 'parts.txt'), '-c', 'copy', path.join(outDir, 'video_noaudio.mp4')], { stdio: 'inherit' }).on('close', r));
-  chunks.forEach(c => fs.unlinkSync(c[2]));
+  chunks.forEach(c => { fs.unlinkSync(c[2]); fs.unlinkSync(c[2] + '.done'); });
 }
 
 async function range(f0, f1, out) {

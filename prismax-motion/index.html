@@ -31,15 +31,12 @@
 
   /* HUD */
   #hud { position: absolute; inset: 0; pointer-events: none; }
-  .corner { position: absolute; width: 34px; height: 34px; border-color: currentColor; border-style: solid; border-width: 0; opacity: .55; }
   #hud .chapter { position: absolute; left: 76px; top: 58px; font-size: 15px; }
   #hud .chapter b { font-weight: 500; color: var(--gold); margin-right: 18px; }
   #hud .tc { position: absolute; right: 76px; top: 58px; font-size: 15px; text-align: right; }
   #hud .rec { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--bronze); margin-right: 12px; transform: translateY(-1px); }
   #hud .bl { position: absolute; left: 76px; bottom: 58px; font-size: 14px; }
   #hud .br { position: absolute; right: 76px; bottom: 58px; font-size: 14px; text-align: right; }
-  #prog { position: absolute; left: 76px; right: 76px; bottom: 40px; height: 1px; background: currentColor; opacity: .18; }
-  #progFill { position: absolute; left: 76px; bottom: 40px; height: 1px; background: var(--gold); }
 
   .tag {
     position: absolute; font-family: 'IBM Plex Mono', monospace; font-size: 15px; letter-spacing: .2em; text-transform: uppercase; white-space: nowrap;
@@ -189,15 +186,10 @@
   <div id="leak" class="layer"></div>
   <div id="vignette" class="layer"></div>
   <div id="hud">
-    <div class="corner" style="left:40px;top:40px;border-left-width:1px;border-top-width:1px"></div>
-    <div class="corner" style="right:40px;top:40px;border-right-width:1px;border-top-width:1px"></div>
-    <div class="corner" style="left:40px;bottom:40px;border-left-width:1px;border-bottom-width:1px"></div>
-    <div class="corner" style="right:40px;bottom:40px;border-right-width:1px;border-bottom-width:1px"></div>
     <div class="chapter mono" id="chap"></div>
     <div class="tc mono" id="tc"></div>
     <div class="bl mono" id="hudBL"></div>
     <div class="br mono" id="hudBR"></div>
-    <div id="prog"></div><div id="progFill"></div>
   </div>
   <div id="barT" class="bar" style="top:0;height:0"></div>
   <div id="barB" class="bar" style="bottom:0;height:0"></div>

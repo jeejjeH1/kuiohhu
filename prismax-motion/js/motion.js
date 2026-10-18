@@ -679,7 +679,6 @@ function hud(t) {
   st(chap, { op: P(t, cs + .25, cs + .7), x: (1 - E.outCubic(P(t, cs + .25, cs + .9))) * -16 });
   const f = Math.floor(t * FPS), ss = Math.floor(f / FPS);
   $('tc').innerHTML = `<span class="rec" style="opacity:${(Math.floor(t * 2) % 2) ? .3 : 1}"></span>Rec&nbsp;&nbsp;00:00:${String(ss).padStart(2, '0')}:${String(f % FPS).padStart(2, '0')}`;
-  $('progFill').style.width = ((1920 - 152) * t / 81) + 'px';
   const inR = t >= 9.0 && t < 24.9;
   if (!inR) {
     $('hudBL').textContent = t < 9 ? 'Physical AI · Data quality' : t < 35 ? 'Dataset · Curated' : t < 47.4 ? 'Sensors · RGB-D / Force / Torque' : t < 56.9 ? 'PrismaX · Data pipeline' : t < 70.9 ? 'Quality · Quantity · Diversity' : 'Physical AI · Next';

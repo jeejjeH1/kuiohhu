@@ -23,6 +23,8 @@
   .mono { font-family: 'IBM Plex Mono', monospace; font-weight: 400; text-transform: uppercase; letter-spacing: .28em; white-space: nowrap; }
   .sans { font-family: 'Instrument Sans', sans-serif; }
   .word { display: inline-block; white-space: pre; will-change: transform, opacity, filter; }
+  .dg { display: inline-block; width: .5em; text-align: center; }
+  .dg.cm { width: .22em; }
   .w-gold { color: var(--gold); font-style: italic; }
   .w-bronze { color: var(--bronze); font-style: italic; }
   .w-it { font-style: italic; }
@@ -68,13 +70,16 @@
 <body>
 <div id="stage"><div id="shake">
   <canvas id="bg2d" class="layer" width="1920" height="1080"></canvas>
-  <canvas id="c3" class="layer" width="1920" height="1080"></canvas>
+  <canvas id="c3" class="layer" width="1920" height="1080" style="visibility:hidden"></canvas>
+  <canvas id="c3v" class="layer" width="1920" height="1080"></canvas>
   <div id="paper" class="layer" style="background:radial-gradient(ellipse at 50% 45%, #E9E3DB 0%, #DFD8D0 60%, #D3CABF 100%);opacity:0"></div>
   <div id="dim" class="layer" style="background:#0C0B0A;opacity:0"></div>
   <canvas id="fx" class="layer" width="1920" height="1080"></canvas>
 
   <!-- (01) question -->
   <div id="q" class="layer">
+    <div id="qBigLab" class="mono abs" style="left:0;width:1920px;text-align:center;top:360px;font-size:18px;color:var(--gold)">Data points collected</div>
+    <div id="qBig" class="serif center" style="top:520px;font-size:230px;color:#F2EEE8;letter-spacing:0"></div>
     <div id="qCount" class="mono abs" style="left:0;width:1920px;text-align:center;top:930px;font-size:16px;color:var(--cream)"></div>
     <div id="q1a" class="serif center" style="top:452px;font-size:124px;color:#F2EEE8"></div>
     <div id="q1b" class="serif center" style="top:590px;font-size:124px;color:#F2EEE8"></div>
@@ -152,7 +157,7 @@
   <!-- (06) balance -->
   <div id="b" class="layer" style="color:var(--black)">
     <div id="minis"></div>
-    <div id="lone" class="card" style="left:855px;top:300px"></div>
+    <div id="lone" class="card" style="left:855px;top:280px;box-shadow:0 0 0 1px rgba(185,152,106,.6), 0 24px 80px rgba(185,152,106,.45)"></div>
     <div id="b1" class="serif center" style="top:640px;font-size:124px"></div>
     <div id="b2bg" class="abs" style="left:0;top:780px;width:1920px;height:300px;background:linear-gradient(180deg,rgba(223,216,208,0),rgba(223,216,208,.96) 40%)"></div>
     <div id="b2a" class="serif center" style="top:880px;font-size:64px"></div>

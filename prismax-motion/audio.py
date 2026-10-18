@@ -299,6 +299,13 @@ for i in range(520):
     if ts < 6.6:
         X(ts, tick(2000 + rng.random() * 4000, .02 + .03 * rng.random()), pan=rng.uniform(-.9, .9), rev=.35)
 X(3.6, riser(3.0, .28, 300, 6000, 70), rev=.4)
+# the hook: the big counter rattles, accelerating, then flies away
+tk = 0.06
+while tk < 2.05:
+    X(tk, tick(1800 + 1400 * tk / 2.05, .045 + .03 * tk / 2.05), pan=rng.uniform(-.25, .25), rev=.1)
+    tk += max(.022, .11 * (1 - tk / 2.05) ** 1.5)
+X(0.0, impact(.55), rev=.5)
+X(1.9, whoosh(.6, 200, 3500, .3), rev=.3)
 # hard cut to silence at 6.65, then the hit on "Not"
 cut = np.ones(N); i0, i1 = int(6.6 * SR), int(6.68 * SR)
 cut[i0:i1] = np.linspace(1, 0, i1 - i0); cut[i1:int(7.0 * SR)] = 0
@@ -456,7 +463,8 @@ X(w('x1', 3), impact(.55), rev=.7)
 for m in (62, 66, 69, 74, 78): X(w('x1', 3), bell(m + 12, 4.0, .05), rev=.9)       # D major bloom on the wordmark
 M(w('x1', 3), pad([D + 24, D + 28, D + 31, D + 36], 3.2, .04, 3500, .1, 1.5), rev=.8)
 X(48.7, shimmer(1.5, .12, 93), rev=.8)
-X(50.05, whoosh(.7, 300, 6000, .35), rev=.3)
+X(50.0, whoosh(.85, 200, 6000, .38), rev=.3)
+X(50.72, pop(520, .12), rev=.4)
 # pipeline: bright pulse in D major
 PIPE = [[D + 24, D + 28, D + 31], [D + 19, D + 23, D + 26], [D + 21, D + 24, D + 28], [D + 26, D + 31, D + 33]]   # D  G  Bm  ... (G/D colour)
 PR = [D, D - 5, D - 1, D + 5]

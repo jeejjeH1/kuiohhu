@@ -180,7 +180,7 @@ const QN = 3200, QP = [];
     const u = r() * 2 - 1, a = r() * Math.PI * 2, rad = 2.6 * Math.cbrt(r()) * (.75 + .25 * r());
     const s = Math.sqrt(1 - u * u);
     const tx = Math.cos(a) * s * rad * 1.5, ty = u * rad * .82, tz = Math.sin(a) * s * rad;
-    const ts = .25 + 6.0 * Math.pow(r(), .55);
+    const ts = -.5 + 6.75 * Math.pow(r(), .55);
     QP.push({ tx, ty, tz, fx: tx * 4 + (r() - .5) * 6, fy: ty * 4 + (r() - .5) * 4, fz: tz * 4 - 6 - r() * 6, ts, gold: r() < .14, sz: .6 + r() * 1.3, dl: r() * .35, vx: (r() - .5) * 2.2, vz: (r() - .5) * 1.5 });
   } }
 const DUST = []; { const r = mulberry32(21); for (let i = 0; i < 90; i++) DUST.push({ x: r() * W, y: r() * H, s: .6 + r() * 2.2, v: .2 + r() * .8, ph: r() * 6 }); }
@@ -260,8 +260,8 @@ function sceneQ(t) {
     const f = 1000 / zz;
     const sx = W / 2 + rx * f, sy = H / 2 - y * f;
     if (sx < -20 || sx > W + 20 || sy < -20 || sy > H + 40) continue;
-    const depth = clamp(1.4 - zz / 9, .15, 1);
-    const sz = p.sz * f / 260;
+    const depth = clamp(1.45 - zz / 9, .25, 1);
+    const sz = p.sz * f / 175;
     bg.globalAlpha = a * depth * (k < 1 ? .5 + .5 * k : 1) * (t > 6.65 && t < 7.0 ? .6 : 1);
     bg.fillStyle = p.gold ? GOLD : '#E8E2DA';
     bg.fillRect(sx - sz / 2, sy - sz / 2, sz, sz);
@@ -279,9 +279,17 @@ function sceneQ(t) {
   bg.fillStyle = tb; bg.fillRect(0, 0, W, H);
   // counter
   const c = $('qCount');
-  const n = Math.pow(spawned / QN, 2.2) * 14_200_000;
+  const n = Math.pow(P(t, 0, 6.5), 2) * 14_200_000;
   c.innerHTML = `<span style="color:${GOLD}">●</span>&nbsp;&nbsp;Data collected&nbsp;&nbsp;<span style="color:#F2EEE8">${fmt(n).padStart(10, ' ')}</span>`;
-  st(c, { op: io(t, .6, .6, 6.6, .3) });
+  st(c, { op: io(t, 2.15, .5, 6.6, .3) });
+  // the hook: a huge counter that runs up before the question lands
+  const big = $('qBig'), bo = 1 - E.inCubic(P(t, 1.95, 2.35));
+  if (vis(big, t < 2.4)) {
+    const digits = fmt(Math.pow(P(t, 0, 6.5), 2) * 14_200_000 + t * 9137);
+    big.innerHTML = [...digits].map(ch => `<span class="dg${ch === ',' ? ' cm' : ''}">${ch}</span>`).join('');
+    st(big, { op: lerp(.6, 1, E.outCubic(P(t, 0, .2))) * bo, s: lerp(1.08, 1, E.outCubic(P(t, 0, 1.2))) * lerp(1, .7, 1 - bo), blur: (1 - bo) * 18, y: (1 - bo) * 120 });
+    st($('qBigLab'), { op: io(t, .1, .4, 1.9, .3), y: (1 - E.outCubic(P(t, .1, .7))) * 10 });
+  } else $('qBigLab').style.visibility = 'hidden';
   words($('q1a'), 'Does collecting ^more ^data', t, 'q1', 6.45);
   words($('q1b'), 'always lead to ~smarter ~AI?', t, 'q1', 6.45);
   // "Not necessarily." — hard cut in, chromatic split
@@ -387,14 +395,14 @@ function sceneG(t, o) {
     } else $('tagKnot').style.visibility = 'hidden';
   }
   $('g2a').style.top = '150px'; $('g2b').style.top = '150px';
-  words($('g2a'), 'It teaches AI ~useful ~skills,', t, 'g2', 32.15);
+  words($('g2a'), 'It teaches AI ~useful ~skills,', t, 'g2', 31.6);
   SKILLS.forEach((n, i) => {
     const t0 = w('g2', 4) + i * .11;
-    const p = E.outBack(P(t, t0, t0 + .45)), q = E.inCubic(P(t, 32.05 + i * .03, 32.35 + i * .03));
+    const p = E.outBack(P(t, t0, t0 + .45)), q = E.inCubic(P(t, 31.6 + i * .03, 31.9 + i * .03));
     st($('chip' + i), { op: P(t, t0, t0 + .2) * (1 - q), x: 120 + (i % 4) * 200, y: 300 + Math.floor(i / 4) * 104 + (1 - p) * 30, s: lerp(.85, 1, p), blur: q * 10 });
     $('chip' + i).style.left = $('chip' + i).style.top = '0px';
   });
-  words($('g2b'), '*and perform in situations|it has ~never ~seen.', t, 'g2', 34.7);
+  words($('g2b'), '*and@8 perform@8 in situations|it has ~never ~seen.', t, 'g2', 34.7);
   if (t > 34.75) { const k = P(t, 34.75, 35.0); $('flash').style.background = '#0C0B0A'; $('flash').style.opacity = k; }
 }
 
@@ -505,21 +513,18 @@ function sceneX(t) {
   }
   // ---- wordmark
   const lb = $('logoBig');
-  const lin = E.outExpo(P(t, 48.3, 49.3)), lout = E.inCubic(P(t, 50.1, 50.5));
-  st(lb, { op: P(t, 48.3, 48.6) * (1 - lout), s: lerp(1.18, 1, lin) * (1 + lout * .06), blur: (1 - lin) * 22 + lout * 10 });
+  const lin = E.outExpo(P(t, 48.3, 49.3)), mk = E.inOut(P(t, 50.05, 50.75));
+  st(lb, { op: P(t, 48.3, 48.6) * (t < 50.75 ? 1 : 0), s: lerp(1.18, 1, lin) * lerp(1, .3, mk), y: -393.5 * mk, blur: (1 - lin) * 22 });
+  const ck = E.inOut(P(t, 50.0, 50.32));
+  lb.style.color = `rgb(${lerp(238, 32, ck).toFixed(0)},${lerp(233, 32, ck).toFixed(0)},${lerp(227, 32, ck).toFixed(0)})`;
   sweep('big', P(t, 48.6, 49.9));
   $('logoSub').innerHTML = `Physical AI&nbsp;&nbsp;<span style="color:${GOLD}">·</span>&nbsp;&nbsp;Robotics data`;
   st($('logoSub'), { op: io(t, 49.0, .5, 50.05, .3), y: (1 - E.outCubic(P(t, 49.0, 49.6))) * 14 });
-  if (t > 50.0 && t < 50.9) {   // cream bloom into the pipeline
-    const k = E.inOut(P(t, 50.0, 50.5));
-    $('flash').style.background = CREAM; $('flash').style.opacity = 1 - P(t, 50.5, 50.9);
-    $('flash').style.clipPath = `circle(${(k * 1200).toFixed(0)}px at 960px 527px)`;
-  }
   if (!pipeOn) return;
   // ---- pipeline
   const po = 1 - E.inCubic(P(t, 56.5, 56.95));
   $('pipe').style.opacity = po;
-  st($('logoSmall'), { op: P(t, 50.6, 51.0), y: (1 - E.outCubic(P(t, 50.6, 51.2))) * -10 });
+  st($('logoSmall'), { op: t >= 50.75 ? 1 : 0 });
   sweep('small', P(t, 51.0, 52.2));
   [['st1', '(01) Collect', 0], ['st2', '(02) Evaluate', 2], ['st3', '(03) Train', 7]].forEach(([id, s, i]) => {
     $(id).innerHTML = `<span style="color:${GOLD}">${s.slice(0, 4)}</span>&nbsp;${s.slice(4)}`;
@@ -565,7 +570,7 @@ function sceneB(t) {
   if (!on) return;
   const lone = $('lone');
   const lk = E.outBack(P(t, 56.95, 57.5));
-  st(lone, { op: P(t, 56.95, 57.2) * (1 - P(t, w('b2', 3), w('b2', 3) + .3)), s: lerp(.6, 1, lk) * lerp(1, .55, E.inOut(P(t, 59.2, 60.4))), y: lerp(0, 120, E.inOut(P(t, 59.2, 60.4))) });
+  st(lone, { op: P(t, 56.95, 57.2) * (1 - P(t, w('b2', 3), w('b2', 3) + .3)), s: lerp(.9, 1.55, lk) * lerp(1, .36, E.inOut(P(t, 59.2, 60.4))) * (1 + .015 * Math.sin(t * 2.2)), y: lerp(0, 120, E.inOut(P(t, 59.2, 60.4))) });
   words($('b1'), 'But quality !alone isn’t enough.', t, 'b1', 59.25);
   // grid of experiences
   const tGrid = w('b2', 3), tDiv = w('b2', 6), tSk = w('b2', 9), tCol = 66.0;
@@ -659,7 +664,8 @@ function sceneEnd(t) {
   lg.style.filter = rk < 1 ? `blur(${((1 - rk) * 6).toFixed(2)}px)` : 'none';
   lg.style.visibility = t > 81.55 ? 'visible' : 'hidden';
   st(lg, { s: lerp(1.04, 1, E.outCubic(P(t, 81.55, 83.5))) });
-  sweep('end', P(t, 83.0, 84.3));
+  sweep('end', t < 85 ? P(t, 83.0, 84.3) : P(t, 86.2, 87.5));
+  st($('end'), { s: 1 + .035 * E.inOut(P(t, 82.8, 88)) });
   words($('endTag'), '*Quality ~data for Physical AI.', t, 83.1, 999, { stagger: .1 });
   $('endUrl').innerHTML = `prismax.ai`;
   st($('endUrl'), { op: P(t, 84.0, 84.6), y: (1 - E.outCubic(P(t, 84.0, 84.8))) * 12 });
@@ -713,14 +719,42 @@ function finishing(t, frame) {
 // ============================================================ main
 await document.fonts.ready;
 await S3.init($('c3'));
+const CUTS = [9.0, 14.2, 24.9, 29.2, 32.4, 35.0, 38.3, 41.4, 43.4, 43.9, 44.4, 44.9, 45.4, 45.9, 47.4, 70.9, 81.0];
+const SHUTTER = .5 / FPS;   // 180-degree shutter
+const FAST = [[10.3, 13.8, 5], [15.2, 18.4, 4], [18.4, 21.0, 3]];   // sub-frames only where things move fast (each costs a full 3D render)
+const v3 = $('c3v').getContext('2d'), c3src = $('c3');
+const glowC = document.createElement('canvas'); glowC.width = 480; glowC.height = 270;
+const gc = glowC.getContext('2d');
+function render3D(t) {
+  let cut = 0; for (const c of CUTS) if (c <= t) cut = c;
+  const SUB = (FAST.find(([a, b]) => t >= a && t < b) || [0, 0, 1])[2];
+  const times = [];
+  for (let k = 0; k < SUB; k++) { const tk = Math.max(cut, t - SHUTTER * (SUB - 1 - k) / Math.max(1, SUB - 1)); if (!times.length || tk > times[times.length - 1] + 1e-6) times.push(tk); }
+  v3.clearRect(0, 0, W, H);
+  let o = { visible: false }, n = 0;
+  for (const tk of times) {
+    o = S3.frame(tk);
+    if (!o.visible) continue;
+    v3.globalAlpha = 1 / (n + 1); v3.drawImage(c3src, 0, 0); n++;
+  }
+  v3.globalAlpha = 1;
+  if (n && darkAt(t)) {
+    gc.clearRect(0, 0, 480, 270);
+    gc.filter = 'brightness(.85) contrast(3.2) blur(5px)'; gc.drawImage($('c3v'), 0, 0, 480, 270); gc.filter = 'none';
+    v3.globalCompositeOperation = 'screen'; v3.globalAlpha = .32; v3.drawImage(glowC, 0, 0, W, H);
+    v3.globalCompositeOperation = 'source-over'; v3.globalAlpha = 1;
+  }
+  return o;
+}
 function render(t) {
   const frame = Math.round(t * FPS);
   bg.clearRect(0, 0, W, H); fx.clearRect(0, 0, W, H); gl.clearRect(0, 0, W, H);
   const fl = $('flash'); fl.style.opacity = 0; fl.style.clipPath = 'none'; fl.style.background = '#fff';
   $('dim').style.opacity = 0;
-  $('paper').style.opacity = (t >= 50.45 && t < 70.95) ? 1 : 0;
-  const o = S3.frame(t);
-  const c3 = $('c3');
+  $('paper').style.opacity = (t >= 50.0 && t < 70.95) ? 1 : 0;
+  $('paper').style.clipPath = t < 50.45 ? `circle(${(E.inOut(P(t, 50.0, 50.45)) * 1200).toFixed(0)}px at 960px 527px)` : 'none';
+  const o = render3D(t);
+  const c3 = $('c3v');
   c3.style.visibility = o.visible ? 'visible' : 'hidden';
   // 3D entrances / exits
   let c3op = 1, clip = 'none';
@@ -737,7 +771,7 @@ function render(t) {
   }
   if (t >= 80.7 && t < 81.0) { fl.style.background = '#FFF6E8'; fl.style.opacity = E.inExpo(P(t, 80.7, 81.0)); }
   if (t >= 81.0 && t < 81.5) { fl.style.background = '#FFF6E8'; fl.style.opacity = 1 - E.outCubic(P(t, 81.0, 81.5)); }
-  if (t < .6) { fl.style.background = '#000'; fl.style.opacity = 1 - P(t, 0, .6); }
+  if (t < .12) { fl.style.background = '#000'; fl.style.opacity = 1 - P(t, 0, .12); }
   hud(t);
   finishing(t, frame);
 }

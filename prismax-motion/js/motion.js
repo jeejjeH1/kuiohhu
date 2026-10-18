@@ -771,9 +771,14 @@ function render(t) {
   }
   if (t >= 80.7 && t < 81.0) { fl.style.background = '#FFF6E8'; fl.style.opacity = E.inExpo(P(t, 80.7, 81.0)); }
   if (t >= 81.0 && t < 81.5) { fl.style.background = '#FFF6E8'; fl.style.opacity = 1 - E.outCubic(P(t, 81.0, 81.5)); }
-  if (t < .12) { fl.style.background = '#000'; fl.style.opacity = 1 - P(t, 0, .12); }
   hud(t);
   finishing(t, frame);
+  // Touch every 2D layer with an invisible, frame-varying pixel: a canvas that is only cleared can keep
+  // showing stale content in headless Chromium under load (seen as leftover reticles after the 3D shots).
+  for (const c of [bg, fx, gl]) {
+    c.save(); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+    c.fillStyle = `rgba(0,0,0,${frame % 2 ? .004 : .008})`; c.fillRect(0, 0, 1, 1); c.restore();
+  }
 }
 window.render = render;
 window.ready = Promise.resolve(true);

@@ -33,6 +33,7 @@ async function renderRange(page, f0, f1, out) {
     '-c:v', 'libx264', '-preset', 'slow', '-crf', '15', '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-r', String(FPS), out], { stdio: ['pipe', 'inherit', 'inherit'] });
   for (let f = f0; f < f1; f++) {
     await page.evaluate(t => window.render(t), f / FPS);
+    await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));   // let the frame actually commit
     const buf = await page.screenshot({ type: 'jpeg', quality: 95, timeout: 0 });   // motion-blurred frames can take >30s under load
     if (!ff.stdin.write(buf)) await new Promise(r => ff.stdin.once('drain', r));
   }

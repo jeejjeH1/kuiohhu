@@ -7,7 +7,7 @@ An 88-second, 16:9 (1920×1080, 30 fps) cinematic motion graphic with voiceover,
 ## Storyboard
 | Time | Chapter | What happens |
 |---|---|---|
-| 0–9s | (01) The question | Millions of data points stream into a cloud. "Does collecting more data always lead to smarter AI?" Hard cut and hit: "Not necessarily." The cloud collapses, and a slit of gold light opens into 3D. |
+| 0–9s | (01) The question | A huge counter of collected data points runs up from the first frame while millions of points stream into a cloud. "Does collecting more data always lead to smarter AI?" Hard cut and hit: "Not necessarily." The cloud collapses, and a slit of gold light opens into 3D. |
 | 9–25s | (02) Quantity | A 3D robot arm repeats a pick-and-place, sped up like a time-lapse (episode counter to 4,812). Bronze ghost arms show incorrect movements, a grasp fails and the cube drops, then the camera cranes up over 77 identical cells. "More data ≠ better learning", with a data-vs-learning chart. |
 | 25–35s | (03) Quality | A cream studio. "Accurate. Diverse. Relevant.": a precise placement on target (0.4 mm), diverse objects and planned trajectories, skill chips, then an unseen object (a torus knot) grasped successfully. |
 | 35–47s | (04) The physical world | Letterboxed and dark: a macro grasp, a push with force vectors, a 6-DoF pose tracker, and a montage of six changing environments that builds into a riser. |
@@ -36,4 +36,6 @@ npm install && node render.js video 4                         # -> out/video_noa
 node render.js preview 12 48.5 84                             # -> preview/t*.png stills
 ffmpeg -i out/video_noaudio.mp4 -i out/audio.wav -c:v copy -c:a aac -b:a 256k -shortest -movflags +faststart prismax_motion_16x9.mp4
 ```
+The fast 3D shots (the time-lapse, the ghost arms, the crane) get real motion blur from sub-frames accumulated at a 180° shutter, and the dark 3D shots get a highlight bloom. The renderer hands out 2-second chunks from a queue, so the heavy shots spread across the workers, and an interrupted render resumes where it stopped.
+
 Every frame is deterministic. `js/motion.js` exposes `render(t)` and draws the DOM/2D layers, and `js/scene3d.js` poses the three.js scene (robot-arm IK, pick-and-place cycles, the grid, the lattice) as a pure function of time. `timeline.json` holds the VO start times shared by the visuals and the audio.

@@ -2,7 +2,7 @@
 
   export ELEVENLABS_API_KEY=...          # required
   export ELEVENLABS_VOICE_ID=...         # optional, any voice from your library
-  export ELEVENLABS_MODEL=eleven_v3      # optional; v3 reads Persian (fa)
+  export ELEVENLABS_MODEL=eleven_v4      # optional; v4 and v3 read Persian (fa)
   python3 tts_elevenlabs.py [--force]
 Needs network access to api.elevenlabs.io.
 """
@@ -10,8 +10,8 @@ import json, os, sys, urllib.request, urllib.error, pathlib
 
 HERE = pathlib.Path(__file__).resolve().parent
 KEY = os.environ.get("ELEVENLABS_API_KEY")
-VOICE = os.environ.get("ELEVENLABS_VOICE_ID", "JBFqnCBsd6RMkjVDRZzb")
-MODEL = os.environ.get("ELEVENLABS_MODEL", "eleven_v3")
+VOICE = os.environ.get("ELEVENLABS_VOICE_ID", "nPczCjzI2devNBz1zQrb")
+MODEL = os.environ.get("ELEVENLABS_MODEL", "eleven_v4")
 if not KEY:
     sys.exit("ELEVENLABS_API_KEY is not set")
 
@@ -23,11 +23,11 @@ for i, line in enumerate(lines):
         continue
     body = {"text": line["tts"], "model_id": MODEL, "language_code": "fa",
             "voice_settings": {"stability": 0.5, "similarity_boost": 0.8, "style": 0.2, "use_speaker_boost": True}}
-    if MODEL != "eleven_v3":   # request stitching context (not used by v3)
+    if MODEL.startswith("eleven_multilingual") or MODEL.startswith("eleven_turbo"):   # request stitching
         body["previous_text"] = lines[i - 1]["tts"] if i else None
         body["next_text"] = lines[i + 1]["tts"] if i + 1 < len(lines) else None
     req = urllib.request.Request(
-        f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE}?output_format=mp3_44100_192",
+        f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE}?output_format=mp3_44100_128",
         data=json.dumps(body).encode(), method="POST",
         headers={"xi-api-key": KEY, "Content-Type": "application/json", "Accept": "audio/mpeg"})
     try:

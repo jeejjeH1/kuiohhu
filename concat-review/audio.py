@@ -1,15 +1,16 @@
 """timeline.json + voice/*.mp3 -> out/audio.wav : narration over a ducked procedural music bed (numpy only)."""
-import json, subprocess, wave, pathlib
+import json, os, subprocess, wave, pathlib
 import numpy as np
 HERE = pathlib.Path(__file__).resolve().parent
 SR = 48000
-TL = json.load(open(HERE / "timeline.json"))
+TL = json.load(open(HERE / os.environ.get("TLFILE", "timeline.json")))
+VOICE_DIR = os.environ.get("VOICE_DIR", "voice"); OUT = HERE / os.environ.get("OUTDIR", "out")
 N = int(TL["duration"] * SR)
 t = np.arange(N) / SR
 rng = np.random.default_rng(7)
 
 
-BPM = 96; beat = 60 / BPM; bar = 4 * beat
+BPM = int(os.environ.get("BPM", "96")); beat = 60 / BPM; bar = 4 * beat
 roots = [57, 53, 48, 55]                      # A3 F3 C3 G3  (Am F C G)
 qual = [[0, 3, 7, 12], [0, 4, 7, 12], [0, 4, 7, 12], [0, 4, 7, 11]]
 f = lambda m: 440 * 2 ** ((m - 69) / 12)
@@ -49,7 +50,7 @@ for sc in TL["scenes"][1:]:
 # voice
 voice = np.zeros(N)
 for ln in TL["lines"]:
-    p = HERE / "voice" / f"line{ln['i']:02d}.mp3"
+    p = HERE / VOICE_DIR / f"line{ln['i']:02d}.mp3"
     if not p.exists(): continue
     raw = subprocess.run(["ffmpeg", "-v", "error", "-i", str(p), "-f", "f32le", "-ac", "1", "-ar", str(SR), "-"], capture_output=True).stdout
     v = np.frombuffer(raw, dtype=np.float32).astype(float)
@@ -67,10 +68,10 @@ fade = np.minimum(1, t / 1.5) * np.minimum(1, (TL["duration"] - t) / 2.5)
 mix = voice * 1.0 + music * duck * fade * 0.9
 mix /= max(1e-9, np.abs(mix).max()) / 0.89
 st = np.stack([mix, mix], 1)
-(HERE / "out").mkdir(exist_ok=True)
-with wave.open(str(HERE / "out" / "audio_raw.wav"), "wb") as w:
+OUT.mkdir(exist_ok=True)
+with wave.open(str(OUT / "audio_raw.wav"), "wb") as w:
     w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR)
     w.writeframes((np.clip(st, -1, 1) * 32767).astype(np.int16).tobytes())
-subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(HERE / "out" / "audio_raw.wav"),
-                "-af", "loudnorm=I=-15:TP=-1.5:LRA=9", "-ar", str(SR), str(HERE / "out" / "audio.wav")], check=True)
+subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(OUT / "audio_raw.wav"),
+                "-af", "loudnorm=I=-15:TP=-1.5:LRA=9", "-ar", str(SR), str(OUT / "audio.wav")], check=True)
 print("audio.wav", TL["duration"], "s")

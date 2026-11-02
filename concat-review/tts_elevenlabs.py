@@ -3,6 +3,7 @@
   export ELEVENLABS_API_KEY=...          # required
   export ELEVENLABS_VOICE_ID=...         # optional, any voice from your library
   export ELEVENLABS_MODEL=eleven_v4      # optional; v4 and v3 read Persian (fa)
+  SCRIPT=script_reel.json VOICE_DIR=voice_reel ELEVENLABS_SPEED=1.1   # optional
   python3 tts_elevenlabs.py [--force]
 Needs network access to api.elevenlabs.io.
 """
@@ -15,14 +16,16 @@ MODEL = os.environ.get("ELEVENLABS_MODEL", "eleven_v4")
 if not KEY:
     sys.exit("ELEVENLABS_API_KEY is not set")
 
-lines = [l for s in json.load(open(HERE / "script.json"))["scenes"] for l in s["lines"]]
-out = HERE / "voice"; out.mkdir(exist_ok=True)
+SCRIPT = os.environ.get("SCRIPT", "script.json")
+SPEED = float(os.environ.get("ELEVENLABS_SPEED", "1.0"))
+lines = [l for s in json.load(open(HERE / SCRIPT))["scenes"] for l in s["lines"]]
+out = HERE / os.environ.get("VOICE_DIR", "voice"); out.mkdir(exist_ok=True)
 for i, line in enumerate(lines):
     f = out / f"line{i:02d}.mp3"
     if f.exists() and "--force" not in sys.argv:
         continue
     body = {"text": line["tts"], "model_id": MODEL, "language_code": "fa",
-            "voice_settings": {"stability": 0.5, "similarity_boost": 0.8, "style": 0.2, "use_speaker_boost": True}}
+            "voice_settings": {"stability": 0.5, "similarity_boost": 0.8, "style": 0.2, "use_speaker_boost": True, "speed": SPEED}}
     if MODEL.startswith("eleven_multilingual") or MODEL.startswith("eleven_turbo"):   # request stitching
         body["previous_text"] = lines[i - 1]["tts"] if i else None
         body["next_text"] = lines[i + 1]["tts"] if i + 1 < len(lines) else None

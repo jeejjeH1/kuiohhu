@@ -5,10 +5,12 @@ const { chromium } = require('playwright');
 const { spawn } = require('child_process');
 const fs = require('fs'), path = require('path');
 const FPS = 30;
-const url = 'file://' + path.resolve(__dirname, 'index.html');
+const PAGE = process.env.PAGE || 'index.html', W = +(process.env.W || 1920), H = +(process.env.H || 1080);
+const TLFILE = process.env.TLFILE || 'timeline.json', OUTDIR = process.env.OUTDIR || 'out';
+const url = 'file://' + path.resolve(__dirname, PAGE);
 
 async function openPage(browser) {
-  const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
+  const page = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 1 });
   page.on('pageerror', e => console.error('PAGE ERROR', e));
   page.on('console', m => { if (m.type() === 'error') console.error('console:', m.text()); });
   await page.goto(url);
@@ -19,10 +21,10 @@ async function openPage(browser) {
 async function preview(times) {
   const browser = await chromium.launch({ args: ['--allow-file-access-from-files'] });
   const page = await openPage(browser);
-  fs.mkdirSync(path.join(__dirname, 'preview'), { recursive: true });
+  const PV = process.env.PREVIEW || 'preview'; fs.mkdirSync(path.join(__dirname, PV), { recursive: true });
   for (const t of times) {
     await page.evaluate(t => window.render(t), +t);
-    await page.screenshot({ path: path.join(__dirname, 'preview', `t${(+t).toFixed(2)}.png`) });
+    await page.screenshot({ path: path.join(__dirname, PV, `t${(+t).toFixed(2)}.png`) });
   }
   await browser.close();
 }
@@ -44,8 +46,8 @@ async function renderRange(browser, f0, f1, out) {
 
 async function video(workers) {
   const browser = await chromium.launch({ args: ['--allow-file-access-from-files'] });
-  const total = Math.round(require('./timeline.json').duration * FPS);
-  const outDir = path.join(__dirname, 'out'); fs.mkdirSync(outDir, { recursive: true });
+  const total = Math.round(require('./' + TLFILE).duration * FPS);
+  const outDir = path.join(__dirname, OUTDIR); fs.mkdirSync(outDir, { recursive: true });
   const chunk = Math.ceil(total / workers);
   const parts = [];
   const jobs = [];

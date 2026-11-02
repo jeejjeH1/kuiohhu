@@ -3,3 +3,9 @@ voice/
 out/
 preview/
 render.log
+voice_reel/
+out_reel/
+preview_reel/
+render_reel.log
+voice_reel_raw/
+*.mp4

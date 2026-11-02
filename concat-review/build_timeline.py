@@ -1,12 +1,15 @@
 """script.json (+ voice/*.mp3 if present) -> timeline.json with absolute times."""
-import json, pathlib, subprocess
+import json, os, pathlib, subprocess
 HERE = pathlib.Path(__file__).resolve().parent
-script = json.load(open(HERE / "script.json"))
-GAP, HEAD, TAIL = 0.35, 0.7, 0.9
-MIN_SCENE = {"intro": 9.0, "gui": 30.0, "result": 15.5, "cta": 7.5}
+SCRIPT = os.environ.get("SCRIPT", "script.json"); VOICE_DIR = os.environ.get("VOICE_DIR", "voice")
+OUT = os.environ.get("TIMELINE", "timeline")
+script = json.load(open(HERE / SCRIPT))
+REEL = "reel" in SCRIPT
+GAP, HEAD, TAIL = (0.22, 0.35, 0.55) if REEL else (0.35, 0.7, 0.9)
+MIN_SCENE = {"intro": 5.0, "gui": 8.0, "result": 5.5, "cta": 4.8} if REEL else {"intro": 9.0, "gui": 30.0, "result": 15.5, "cta": 7.5}
 
 def dur(i, text):
-    f = HERE / "voice" / f"line{i:02d}.mp3"
+    f = HERE / VOICE_DIR / f"line{i:02d}.mp3"
     if f.exists():
         out = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(f)],
                              capture_output=True, text=True).stdout
@@ -23,7 +26,7 @@ for s in script["scenes"]:
     t = max(t - GAP + TAIL, s0 + MIN_SCENE.get(s["id"], 0))
     scenes.append({"id": s["id"], "start": round(s0, 3), "end": round(t, 3)})
 total = round(t + 0.5, 3)
-json.dump({"duration": total, "fps": 30, "scenes": scenes, "lines": lines}, open(HERE / "timeline.json", "w"), ensure_ascii=False, indent=1)
+json.dump({"duration": total, "fps": 30, "scenes": scenes, "lines": lines}, open(HERE / f"{OUT}.json", "w"), ensure_ascii=False, indent=1)
 print(f"{len(lines)} lines ({voiced} voiced), {total:.1f}s")
 for s in scenes: print(f"  {s['id']:8s} {s['start']:6.1f} -> {s['end']:6.1f}")
-open(HERE / "timeline.js", "w").write("window.TL = " + json.dumps({"duration": total, "fps": 30, "scenes": scenes, "lines": lines}, ensure_ascii=False) + ";\n")
+open(HERE / f"{OUT}.js", "w").write("window.TL = " + json.dumps({"duration": total, "fps": 30, "scenes": scenes, "lines": lines}, ensure_ascii=False) + ";\n")

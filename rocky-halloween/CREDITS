@@ -1,0 +1,30 @@
+MAGNITUDE 10.31 — third-party material used in the film
+
+Fonts (assets/fonts/, from Google Fonts)
+  - Creepster — SIL Open Font License 1.1
+  - Special Elite — Apache License 2.0
+  - Oswald — SIL Open Font License 1.1
+  - JetBrains Mono (system font used for the LED display) — SIL Open Font License 1.1
+
+Voice
+  - "Trick, or treat." synthesized with Piper TTS (https://github.com/rhasspy/piper),
+    voice en_US-ryan-high (https://huggingface.co/rhasspy/piper-voices). Check the voice's
+    model card for its licence before commercial use. Pitch-shifted and layered in audio.py.
+
+Motion techniques (ported formulas, MIT License (c) 2026 Shohei Ohtaki)
+  - Motion Prompt #024 Impact shake — https://showheyohtaki.github.io/motion-prompt/#024
+  - Motion Prompt #032 Dolly zoom (Vertigo) — https://showheyohtaki.github.io/motion-prompt/#032
+  - Motion Prompt #111 Chromatic aberration — https://showheyohtaki.github.io/motion-prompt/#111
+
+Craft references (guidance only, no code or assets copied)
+  - video-shotcraft aesthetic rules (holds, subtitle size, impact budget, sound/foley)
+  - Lemo-Opuscar DIRECTOR.md (3-second hook, two silences, J-cuts, title-card hold, −14 LUFS)
+  - Dioramas engine (volumetric light with drifting dust, bloom/grain/vignette post stack)
+
+Brand
+  - Seismic mark and logo: reference images supplied by the user (assets/seismic-mark-ref.png,
+    assets/seismic-logo-ref.png). Trademarks belong to their owner.
+  - Rocky is redrawn as vector stone plates after the community's Rocky design; no artist's image is embedded.
+
+All other picture and sound (scenes, Rocky, seismograph, score and SFX) is generated procedurally by
+motion.js and audio.py in this folder.

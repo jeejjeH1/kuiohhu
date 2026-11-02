@@ -1,7 +1,7 @@
 /* MAGNITUDE 10.31 — a #ROCKYHalloween short.
    Deterministic, frame-driven: window.render(t) paints the frame at time t (seconds). */
 (() => {
-const W = 1080, H = 1350, DUR = 30;
+const W = 1080, H = 1350, DUR = 32;
 const cv = document.getElementById('c');
 const ctx = cv.getContext('2d');
 
@@ -28,12 +28,12 @@ const rgb = (c, k = 1, add = [0, 0, 0]) => `rgb(${clamp(c[0] * k + add[0], 0, 25
 function mk(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
 
 // ---------------------------------------------------------------- timeline
-const TH = [{ t: 3.4, a: .30 }, { t: 6.3, a: .55 }, { t: 7.7, a: .8 }, { t: 11.0, a: 1.0 }];
+const TH = [{ t: 2.3, a: .22 }, { t: 4.5, a: .38 }, { t: 6.3, a: .55 }, { t: 7.7, a: .8 }, { t: 11.0, a: 1.0 }];
 const T = {
   alarm: 9.6, lampDie: 11.0, paper: 12.0, alarmOff: 13.55, black: 14.0,
-  rocky: 15.0, eyes: 15.3, logo: 16.2, seams: 17.0, seamsEnd: 18.7,
-  tilt: 20.0, tiltEnd: 21.3, v1: 21.5, v2: 22.35, shake: 23.0, cut01: 23.6,
-  sheet: 24.6, end: 27.3,
+  rocky: 15.0, eyes: 15.3, logo: 16.2, seams: 17.0, seamsEnd: 18.7, dolly0: 16.9, dolly1: 18.9,
+  tilt: 20.0, tiltEnd: 21.3, v1: 21.5, v2: 22.35, shake: 23.0, cut01: 23.9,
+  sheet: 24.9, pull0: 25.05, pull1: 26.8, hit: 26.75, end: 27.9,
 };
 window.TIMELINE = { TH, T, DUR };
 
@@ -67,10 +67,19 @@ function sig(t) {
   if (d > 0 && d < 1.2) s += 0.16 * Math.exp(-d * 4) * Math.sin(d * 2 * Math.PI * 7);
   return s;
 }
-function shakeAmt(t) {
-  let a = 0;
-  for (const th of TH) { const d = t - th.t; if (d > 0) a += th.a * Math.exp(-d * 4.5) * (th.a > .9 ? 46 : 26); }
-  return a + chaos(t) * 9;
+// Motion Prompt #024 · MIT License (c) 2026 Shohei Ohtaki · https://showheyohtaki.github.io/motion-prompt/#024
+// Impact shake: x 15px·e^(−5t)·sin(2π·5t), y 11px·e^(−5t)·cos(2π·6.5t), rot 0.02rad·e^(−5t)·sin(2π·5t+0.6) for 1.1 s
+// (amplitudes scaled ×2.2 for a 1080-wide frame; used once, on the biggest thump).
+function camShake(t) {
+  let dx = 0, dy = 0, rot = 0;
+  for (const th of TH) {
+    const d = t - th.t; if (d <= 0 || d > 1.1) continue;
+    const e = Math.exp(-5 * d), ph = 2 * Math.PI * 5 * d;
+    const k = th.a > .9 ? 2.2 : th.a * 0.55;
+    dx += 15 * k * e * Math.sin(ph); dy += 11 * k * e * Math.cos(ph * 1.3); rot += (th.a > .9 ? .02 : .004 * th.a) * e * Math.sin(ph + .6);
+  }
+  const ch = chaos(t) * 5; dx += vnoise(t * 30, 1) * ch; dy += vnoise(t * 27, 2) * ch;
+  return [dx, dy, rot];
 }
 function thumpHop(t, seed) { // candy hop height
   let h = 0;
@@ -87,7 +96,7 @@ function lampLevel(t) {
   if (t >= T.lampDie) return 2.2;                       // bulb pop flash
   let k = 1;
   const flick = (a, b, rate, p) => { if (t > a && t < b && hash(Math.floor(t * rate) + a * 13) < p) k = .18; };
-  flick(6.3, 6.9, 22, .45); flick(7.7, 8.6, 26, .5); flick(9.6, 11, 18, .3);
+  flick(4.5, 4.75, 22, .3); flick(6.3, 6.9, 22, .45); flick(7.7, 8.6, 26, .5); flick(9.6, 11, 18, .3);
   return k;
 }
 function redLevel(t) {
@@ -120,7 +129,7 @@ function initRoom() {
     });
   }
   candies.sort((a, b) => a.y - b.y);
-  for (let i = 0; i < 110; i++) dust.push({ x: r() * W, v: 50 + r() * 120, s: .8 + r() * 2.2, k: Math.floor(r() * 4), d: r() * .9, sw: r() * 6 });
+  for (let i = 0; i < 110; i++) dust.push({ x: r() * W, v: 50 + r() * 120, s: .8 + r() * 2.2, k: 1 + Math.floor(r() * 4), d: r() * .9, sw: r() * 6 });
 }
 
 function rr(c, x, y, w, h, rad) { c.beginPath(); c.roundRect(x, y, w, h, rad); }
@@ -171,13 +180,13 @@ function drawPumpkin(c, cx, cy, rx, ry, faceGlow = 0) {
 
 function drawRoomScene(t, cam, mode) {
   // mode: 'night' (lamp/red) or 'after' (orange glow from Rocky, no lamp)
-  const sh = mode === 'night' ? shakeAmt(t) : 0;
-  const shx = vnoise(t * 32, 1) * sh, shy = vnoise(t * 29, 2) * sh;
+  const [shx, shy, shr] = mode === 'night' ? camShake(t) : [0, 0, 0];
   const S = cam.s;
   const tx = W / 2 - cam.x * S + shx, ty = H / 2 - cam.y * S + shy;
   const toS = (x, y) => [x * S + tx, y * S + ty];
+  const applyCam = (cc) => { cc.setTransform(1, 0, 0, 1, 0, 0); cc.translate(W / 2, H / 2); cc.rotate(shr); cc.translate(-W / 2, -H / 2); cc.transform(S, 0, 0, S, tx, ty); };
   const c = ctx;
-  c.save(); c.setTransform(S, 0, 0, S, tx, ty);
+  c.save(); applyCam(c);
 
   // wall
   c.fillStyle = '#272c38'; c.fillRect(-200, -200, 1500, 1100);
@@ -242,7 +251,7 @@ function drawRoomScene(t, cam, mode) {
 
   // fallen candy (from thump 2)
   const fc = candies[2];
-  const fp = P(t, TH[1].t + .05, TH[1].t + .65);
+  const fp = P(t, TH[2].t + .05, TH[2].t + .65);
 
   // ---- seismograph
   c.fillStyle = 'rgba(0,0,0,.45)'; c.beginPath(); c.ellipse(540, 908, 360, 20, 0, 0, 7); c.fill();
@@ -317,7 +326,7 @@ function drawRoomScene(t, cam, mode) {
   if (fp > 0) {
     const x0 = bx + fc.x, y0 = by - 82 + fc.y, x1 = 770, y1 = 975;
     const fx = lerp(x0, x1, fp), fy = lerp(y0, y1, fp) - Math.sin(fp * Math.PI) * 70;
-    const land = P(t, TH[1].t + .65, TH[1].t + 1.0);
+    const land = P(t, TH[2].t + .65, TH[2].t + 1.0);
     drawCandy(c, fc, fx + land * 14, fy - Math.sin(land * Math.PI) * 12, fc.rot + fp * 5 + land * 1.2, fc.s);
   }
 
@@ -378,9 +387,24 @@ function drawRoomScene(t, cam, mode) {
   }
   ctx.restore();
   // display glow re-draw on top (emissive)
-  ctx.save(); ctx.setTransform(S, 0, 0, S, tx, ty); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .55; drawDisplay(ctx, t, mode, true); ctx.restore();
+  ctx.save(); applyCam(ctx); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .55; drawDisplay(ctx, t, mode, true); ctx.restore();
+  // volumetric lamp beam with drifting dust (after the Dioramas engine's raymarched spotlights, done in 2D)
+  if (mode === 'night' && L > 0) {
+    ctx.save(); applyCam(ctx); ctx.globalCompositeOperation = 'screen';
+    const lk = Math.min(1, L);
+    const bg = ctx.createLinearGradient(300, 610, 560, 860);
+    bg.addColorStop(0, `rgba(255,214,150,${.20 * lk})`); bg.addColorStop(1, 'rgba(255,214,150,0)');
+    ctx.fillStyle = bg; ctx.beginPath(); ctx.moveTo(262, 590); ctx.lineTo(330, 600); ctx.lineTo(880, 930); ctx.lineTo(300, 960); ctx.closePath(); ctx.fill();
+    for (let i = 0; i < 70; i++) {
+      const u = hash(i * 3.7), v = hash(i * 9.1);
+      const bx = lerp(300, lerp(330, 860, v), u) + vnoise(t * .4 + i, 11) * 30, by = lerp(605, 940, u) + vnoise(t * .35 + i * 2, 12) * 26;
+      const a = lk * .55 * (.5 + .5 * Math.sin(t * 1.7 + i)) * (1 - u * .8);
+      ctx.fillStyle = `rgba(255,236,200,${a})`; ctx.fillRect(bx, by, 1.6 + hash(i) * 1.6, 1.6 + hash(i) * 1.6);
+    }
+    ctx.restore();
+  }
   if (mode === 'night' && red > 0) { // emissive beacon
-    ctx.save(); ctx.setTransform(S, 0, 0, S, tx, ty); ctx.globalCompositeOperation = 'lighter';
+    ctx.save(); applyCam(ctx); ctx.globalCompositeOperation = 'lighter';
     const g = ctx.createRadialGradient(252, 585, 0, 252, 585, 90); g.addColorStop(0, `rgba(255,60,40,${.9 * red})`); g.addColorStop(1, 'rgba(255,60,40,0)');
     ctx.fillStyle = g; ctx.fillRect(150, 480, 200, 220); ctx.restore();
   }
@@ -390,9 +414,10 @@ function drawDisplay(c, t, mode, emissive = false) {
   let l1 = 'MAGNITUDE', val = '0.00', l2 = 'LISTENING', col = '#3dff8a', blink = 1;
   if (mode === 'after') { val = '0.01'; l2 = 'CANDY DETECTED'; }
   else {
-    if (t >= TH[0].t) { val = '2.14'; l2 = 'EVENT'; col = '#9dff3d'; }
-    if (t >= TH[1].t) { val = '4.87'; col = '#ffd23d'; }
-    if (t >= TH[2].t) { val = '7.62'; col = '#ff9a3d'; l2 = 'STRONG EVENT'; }
+    if (t >= TH[0].t) { val = '1.42'; l2 = 'EVENT'; col = '#9dff3d'; }
+    if (t >= TH[1].t) { val = '3.18'; col = '#d8ff3d'; }
+    if (t >= TH[2].t) { val = '4.87'; col = '#ffd23d'; l2 = 'EVENT · CLOSER'; }
+    if (t >= TH[3].t) { val = '7.62'; col = '#ff9a3d'; l2 = 'STRONG EVENT'; }
     if (t >= 8.9) val = (8 + hash(Math.floor(t * 24)) * 2.2).toFixed(2);
     for (const th of TH) if (t > th.t && t < th.t + .22) val = (hash(Math.floor(t * 40)) * 9.99).toFixed(2);
     if (t >= T.alarm) { val = '10.31'; col = '#ff2e22'; l2 = 'DETECTED'; blink = Math.floor((t - T.alarm) * 4) % 2 ? .25 : 1; }
@@ -570,15 +595,7 @@ function buildRocky() {
   }
 }
 function markInit() {
-  markImg = mk(400, 400);
-  const m = markImg.getContext('2d');
-  const cres = (cxA, cxB) => { const o = mk(400, 400), oc = o.getContext('2d'); oc.fillStyle = '#fff'; oc.beginPath(); oc.arc(cxA, 200, 110, 0, 7); oc.fill(); oc.globalCompositeOperation = 'destination-out'; oc.beginPath(); oc.arc(cxB, 200, 112, 0, 7); oc.fill(); return o; };
-  m.drawImage(cres(118, 66), 0, 0); m.drawImage(cres(282, 334), 0, 0);
-  m.strokeStyle = '#fff'; m.lineWidth = 7; m.lineCap = 'round';
-  m.beginPath(); m.arc(120, 200, 128, .95, 1.35); m.stroke();
-  m.beginPath(); m.arc(280, 200, 128, Math.PI - 1.35, Math.PI - .95); m.stroke();
-  m.beginPath(); m.arc(120, 200, 128, -1.35, -.95); m.stroke();
-  m.beginPath(); m.arc(280, 200, 128, Math.PI + .95, Math.PI + 1.35); m.stroke();
+  return new Promise((res, rej) => { const im = new Image(); im.onload = () => { markImg = im; res(); }; im.onerror = rej; im.src = 'assets/seismic-mark.png'; });
 }
 
 const embers = [];
@@ -621,23 +638,7 @@ function drawRockyScene(t, cam) {
   const lit = .05 + .5 * E.smooth(seamP);
   const door = .12 + .88 * E.smooth(P(t, T.logo - .4, T.seams + .4));
 
-  // background: doorway light behind him + fog
-  c.fillStyle = '#030305'; c.fillRect(0, 0, W, H);
-  const [dx0, dy0] = [tx - 520 * S * .8, ty - 2300 * S * .8];
-  const dg = c.createLinearGradient(0, dy0, 0, ty);
-  dg.addColorStop(0, `rgba(40,55,85,${.25 * door})`); dg.addColorStop(.7, `rgba(70,90,125,${.55 * door})`); dg.addColorStop(1, `rgba(110,125,150,${.75 * door})`);
-  c.fillStyle = dg; c.fillRect(dx0, dy0, 1040 * S * .8, ty - dy0 + 40 * S);
-  c.strokeStyle = '#020203'; c.lineWidth = 40 * S; c.strokeRect(dx0, dy0, 1040 * S * .8, ty - dy0 + 200 * S);
-  // fog
-  for (let i = 0; i < 6; i++) {
-    const fx = W * (hash(i * 3) * 1.4 - .2) + Math.sin(t * .3 + i) * 80, fy = ty - 200 * S - i * 120 * S;
-    const g = c.createRadialGradient(fx, fy, 0, fx, fy, 420 * S);
-    g.addColorStop(0, `rgba(120,135,160,${.10 * door})`); g.addColorStop(1, 'rgba(120,135,160,0)');
-    c.fillStyle = g; c.fillRect(0, 0, W, H);
-  }
-  // floor
-  const fg = c.createLinearGradient(0, ty - 40 * S, 0, ty + 300 * S); fg.addColorStop(0, '#0d0e12'); fg.addColorStop(1, '#030304');
-  c.fillStyle = fg; c.fillRect(0, ty - 20 * S, W, H);
+  drawOutside(c, t, tf, S, door);
 
   // body blocks
   gctx.clearRect(0, 0, W, H);
@@ -687,11 +688,11 @@ function drawRockyScene(t, cam) {
       gctx.stroke();
     }
     if (b.chest) {
-      const [mx, my] = tf(0, -1440), [, my2] = tf(0, -1520);
-      const ms = (my - my2) * 2 / 230;
-      c.save(); c.globalAlpha = .12 + .88 * logoOn;
-      c.drawImage(markImg, mx - 200 * ms, my - 200 * ms, 400 * ms, 400 * ms); c.restore();
-      if (logoOn > 0) { gctx.save(); gctx.globalAlpha = logoOn * .8; gctx.drawImage(markImg, mx - 200 * ms, my - 200 * ms, 400 * ms, 400 * ms); gctx.restore(); }
+      const [mx, my] = tf(0, -1438), [, mt] = tf(0, -1438 - 84), [, mb] = tf(0, -1438 + 84);
+      const mh = mb - mt, mw = mh * markImg.width / markImg.height;
+      c.save(); c.globalAlpha = .1 + .9 * logoOn;
+      c.drawImage(markImg, mx - mw / 2, my - mh / 2, mw, mh); c.restore();
+      if (logoOn > 0) { gctx.save(); gctx.globalAlpha = logoOn * .28; gctx.drawImage(markImg, mx - mw / 2, my - mh / 2, mw, mh); gctx.restore(); }
     }
     if (b.head) {
       // brow + eyes
@@ -739,6 +740,92 @@ function drawRockyScene(t, cam) {
   }
 }
 
+// Motion Prompt #032 · MIT License (c) 2026 Shohei Ohtaki · https://showheyohtaki.github.io/motion-prompt/#032
+// Dolly zoom (Vertigo): subject keeps its size while the background closes in — buildings ≈2.2×, mountains ≈2.4×,
+// cubic ease-in-out (≈cubic-bezier(0.65,0,0.35,1)). Here: Rocky stays put while moon/trees/door frame grow behind him.
+function dollyK(t, far) { return 1 + (far - 1) * E.inOutCubic(P(t, T.dolly0, T.dolly1)); }
+function drawOutside(c, t, tf, S, door) {
+  const [ax, ay] = tf(0, -1250);                  // background anchor behind his torso
+  // sky
+  const sk = c.createLinearGradient(0, 0, 0, H);
+  sk.addColorStop(0, rgb([6, 9, 26], .35 + .65 * door)); sk.addColorStop(.6, rgb([20, 30, 62], .35 + .65 * door)); sk.addColorStop(1, rgb([38, 44, 70], .35 + .65 * door));
+  c.fillStyle = sk; c.fillRect(0, 0, W, H);
+  // moon (farthest, 2.4×) emerging from clouds
+  const km = dollyK(t, 2.4) * S, moonA = .15 + .85 * door;
+  const mx = ax + 120 * km, my = ay - 215 * km, mr = 105 * km;
+  let g = c.createRadialGradient(mx, my, mr * .8, mx, my, mr * 4.2);
+  g.addColorStop(0, `rgba(235,230,205,${.38 * moonA})`); g.addColorStop(1, 'rgba(235,230,205,0)');
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  c.fillStyle = rgb([242, 236, 212], moonA); c.beginPath(); c.arc(mx, my, mr, 0, 7); c.fill();
+  c.fillStyle = `rgba(170,160,135,${.35 * moonA})`;
+  [[-.3, -.25, .2], [.28, .18, .15], [.05, -.42, .1], [-.2, .35, .12], [.4, -.2, .08]].forEach(([u, v, r]) => { c.beginPath(); c.arc(mx + u * mr, my + v * mr, r * mr, 0, 7); c.fill(); });
+  // god rays from the moon (Rocky occludes them later)
+  c.save(); c.globalCompositeOperation = 'screen';
+  for (let i = 0; i < 9; i++) {
+    const a0 = Math.PI * (.55 + i * .11) + Math.sin(t * .2 + i) * .02, w = .03 + hash(i) * .03;
+    const L = 2200;
+    c.fillStyle = `rgba(190,200,230,${.035 * door})`;
+    c.beginPath(); c.moveTo(mx, my); c.lineTo(mx + Math.cos(a0 - w) * L, my + Math.sin(a0 - w) * L); c.lineTo(mx + Math.cos(a0 + w) * L, my + Math.sin(a0 + w) * L); c.closePath(); c.fill();
+  }
+  c.restore();
+  // clouds drifting off the moon
+  const cp = E.smooth(P(t, T.logo - .5, T.seams + .6));
+  for (let i = 0; i < 4; i++) {
+    const cx = mx + (-260 + i * 170 + cp * (i % 2 ? 520 : -520)) * km * .6 + t * 6, cy = my + (-60 + i * 50) * km * .5;
+    g = c.createRadialGradient(cx, cy, 0, cx, cy, 260 * km * .6);
+    g.addColorStop(0, `rgba(12,16,32,${.92 - .35 * door})`); g.addColorStop(1, 'rgba(12,16,32,0)');
+    c.save(); c.translate(cx, cy); c.scale(2.2, .55); c.translate(-cx, -cy); c.fillStyle = g; c.fillRect(cx - 700, cy - 700, 1400, 1400); c.restore();
+  }
+  // hills, tombstones and dead trees (2.0×)
+  const kt = dollyK(t, 2.0) * S, hy = ay + 330 * kt;
+  c.fillStyle = rgb([8, 9, 16], 1); c.beginPath(); c.moveTo(0, H);
+  for (let x = 0; x <= W; x += 20) c.lineTo(x, hy + Math.sin((x - ax) / (260 * kt)) * 40 * kt + Math.sin((x - ax) / (90 * kt)) * 8 * kt);
+  c.lineTo(W, H); c.closePath(); c.fill();
+  const tomb = (u, w, h2) => { const x = ax + u * kt, y = hy + Math.sin((x - ax) / (260 * kt)) * 40 * kt + 6 * kt; c.beginPath(); c.moveTo(x - w * kt, y); c.lineTo(x - w * kt, y - h2 * kt); c.arc(x, y - h2 * kt, w * kt, Math.PI, 0); c.lineTo(x + w * kt, y); c.fill(); };
+  tomb(-520, 26, 50); tomb(-430, 20, 34); tomb(470, 24, 44); tomb(560, 18, 30);
+  c.strokeStyle = rgb([8, 9, 16], 1); c.lineCap = 'round';
+  const br = (x, y, a, len, w, d, sd) => { if (d > 6 || len < 4) return; const x2 = x + Math.cos(a) * len, y2 = y + Math.sin(a) * len; c.lineWidth = w; c.beginPath(); c.moveTo(x, y); c.lineTo(x2, y2); c.stroke(); br(x2, y2, a - .5 + hash(d * 7 + sd) * .3, len * .72, w * .66, d + 1, sd + 1.3); br(x2, y2, a + .4 + hash(d * 3 + sd) * .3, len * .66, w * .62, d + 1, sd + 2.1); };
+  br(ax - 640 * kt, hy + 20 * kt, -1.45, 170 * kt, 18 * kt, 0, 1); br(ax + 690 * kt, hy + 10 * kt, -1.7, 150 * kt, 16 * kt, 0, 5);
+  // ground fog
+  for (let i = 0; i < 7; i++) {
+    const fx = W * (hash(i * 3) * 1.4 - .2) + Math.sin(t * .25 + i) * 90, fy = hy + (20 + i * 25) * kt;
+    g = c.createRadialGradient(fx, fy, 0, fx, fy, 380 * kt);
+    g.addColorStop(0, `rgba(120,135,165,${.13 * (.4 + .6 * door)})`); g.addColorStop(1, 'rgba(120,135,165,0)');
+    c.save(); c.translate(fx, fy); c.scale(1.8, .45); c.translate(-fx, -fy); c.fillStyle = g; c.fillRect(fx - 900, fy - 900, 1800, 1800); c.restore();
+  }
+  // the station's door frame (nearest background layer, 1.35×)
+  const kd = dollyK(t, 1.35) * S;
+  c.fillStyle = '#040406';
+  const jw = 520 * kd, top = ay - 980 * kd;
+  c.fillRect(0, 0, ax - jw, H); c.fillRect(ax + jw, 0, W - ax - jw, H); c.fillRect(0, 0, W, Math.max(0, top));
+  c.strokeStyle = `rgba(150,170,210,${.18 * door})`; c.lineWidth = 2;
+  c.beginPath(); c.moveTo(ax - jw, H); c.lineTo(ax - jw, top); c.lineTo(ax + jw, top); c.lineTo(ax + jw, H); c.stroke();
+}
+
+// Motion Prompt #111 · MIT License (c) 2026 Shohei Ohtaki · https://showheyohtaki.github.io/motion-prompt/#111
+// Chromatic aberration: image multiplied by pure R, G, B and added back over black; scale about the centre
+// red 1+2s, green 1+s, blue 1 (s up to 0.02). Used as a short hit on the two biggest impacts only.
+const abA = mk(W, H), abActx = abA.getContext('2d'), abB = mk(W, H), abBctx = abB.getContext('2d');
+function aberration(s) {
+  if (s <= 0.0005) return;
+  abActx.globalCompositeOperation = 'source-over'; abActx.drawImage(cv, 0, 0);
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); ctx.globalCompositeOperation = 'lighter';
+  for (const [col, k] of [['#ff0000', 1 + 2 * s], ['#00ff00', 1 + s], ['#0000ff', 1]]) {
+    abBctx.globalCompositeOperation = 'source-over'; abBctx.drawImage(abA, 0, 0);
+    abBctx.globalCompositeOperation = 'multiply'; abBctx.fillStyle = col; abBctx.fillRect(0, 0, W, H);
+    ctx.drawImage(abB, W / 2 - W * k / 2, H / 2 - H * k / 2, W * k, H * k);
+  }
+  ctx.restore();
+}
+// Bloom (after the Dioramas post stack: bloom + grain + vignette), cheap 2D version at quarter resolution.
+const bl = mk(270, 338), blc = bl.getContext('2d');
+function bloom(k) {
+  blc.filter = 'brightness(.85) contrast(2.2)'; blc.drawImage(cv, 0, 0, 270, 338); blc.filter = 'none';
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = k;
+  ctx.filter = 'blur(9px)'; ctx.drawImage(bl, 0, 0, W, H); ctx.filter = 'none'; ctx.restore();
+}
+
 // ---------------------------------------------------------------- overlays
 function grainAndVignette(t, k = 1) {
   const g = grains[Math.floor(t * 24) % grains.length];
@@ -748,10 +835,10 @@ function grainAndVignette(t, k = 1) {
   vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(0,0,0,${.6 * k})`);
   ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
 }
-function subtitle(text, a, y = 1165) {
+function subtitle(text, a, y = 1165, size = 104) {
   if (a <= 0) return;
   ctx.save(); ctx.globalAlpha = a; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.font = '104px Creepster'; ctx.letterSpacing = '3px';
+  ctx.font = `${size}px Creepster`; ctx.letterSpacing = '3px';
   ctx.lineWidth = 12; ctx.strokeStyle = 'rgba(10,4,2,.9)'; ctx.strokeText(text, W / 2, y);
   ctx.shadowColor = 'rgba(255,110,20,.9)'; ctx.shadowBlur = 30;
   ctx.fillStyle = '#ff8a1f'; ctx.fillText(text, W / 2, y);
@@ -799,7 +886,7 @@ function drawEnd(t) {
     const y = 1035 + s * 55; x === 110 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
   }
   ctx.stroke();
-  ctx.fillStyle = '#8b8378'; ctx.font = '26px SpecialElite'; ctx.textAlign = 'center'; ctx.letterSpacing = '4px';
+  ctx.fillStyle = '#9a9286'; ctx.font = '34px SpecialElite'; ctx.textAlign = 'center'; ctx.letterSpacing = '4px';
   ctx.fillText('SEISMIC STATION  —  OCT 31  —  23:59', W / 2, 1170);
   ctx.restore();
 }
@@ -811,57 +898,81 @@ function render(t) {
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
 
   if (t < T.paper) {
-    // scenes 1–4: the station
+    // scenes 1–4: the station. Opens on a macro of the pen and pulls back (hook: first thump at 2.3 s)
     let cam;
-    if (t < 7.7) { const p = E.smooth(P(t, 0, 7.7)); cam = { x: lerp(540, 548, p), y: lerp(700, 735, p), s: lerp(1.12, 1.22, p) }; }
-    else if (t < T.alarm) { const p = P(t, 7.7, T.alarm); cam = { x: lerp(585, 600, p), y: 705, s: lerp(2.25, 2.45, p) }; }
+    if (t < 2.25) { const p = E.inOutCubic(P(t, 0, 2.2)); cam = { x: lerp(628, 540, p), y: lerp(705, 700, p), s: lerp(4.2, 1.12, p) }; }
+    else if (t < TH[3].t) { const p = E.smooth(P(t, 2.25, TH[3].t)); cam = { x: lerp(540, 548, p), y: lerp(700, 735, p), s: lerp(1.12, 1.24, p) }; }
+    else if (t < T.alarm) { const p = P(t, TH[3].t, T.alarm); cam = { x: lerp(585, 600, p), y: 705, s: lerp(2.25, 2.45, p) }; }
     else if (t < 10.75) { const p = P(t, T.alarm, 10.75); cam = { x: 486, y: 846, s: lerp(2.0, 2.18, E.outCubic(p)) }; }
     else { const p = P(t, 10.75, T.paper); cam = { x: 540, y: 700, s: lerp(1.08, 1.02, p) }; }
     drawRoomScene(t, cam, 'night');
+    bloom(.32);
+    aberration(.022 * Math.exp(-(t - T.lampDie) * 6) * (t > T.lampDie ? 1 : 0));
     grainAndVignette(t);
-    const fin = E.smooth(P(t, 0, .7)); if (fin < 1) { ctx.fillStyle = `rgba(0,0,0,${1 - fin})`; ctx.fillRect(0, 0, W, H); }
+    const fin = .45 + .55 * E.smooth(P(t, 0, .4)); if (fin < 1) { ctx.fillStyle = `rgba(0,0,0,${1 - fin})`; ctx.fillRect(0, 0, W, H); }
   } else if (t < T.black) {
     // scene 5: paper spits out under the red alarm (only chaos, no logo readable)
     const p = E.outCubic(P(t, T.paper, T.paper + .5));
     const sh = 10 * (1 - P(t, T.paper, 13.2));
     const cam = { x: 250, y: lerp(980, 700, p), s: 2.7, r: -.06, shx: vnoise(t * 30, 7) * sh, shy: vnoise(t * 27, 8) * sh };
     drawSheetScene(t, cam, { kind: 'red', k: redLevel(t) });
+    bloom(.25);
     grainAndVignette(t);
     const k = redLevel(t); ctx.fillStyle = `rgba(0,0,0,${t > T.alarmOff ? 1 - k * .9 : 0})`; ctx.fillRect(0, 0, W, H);
   } else if (t < T.rocky) {
     // scene 6: silence
   } else if (t < T.cut01) {
     // scenes 7–8: Rocky
-    let cam;
     const pin = P(t, T.rocky, T.tilt);
     const base = { x: 0, y: lerp(-1115, -1150, pin), s: lerp(1.07, 1.16, pin) };
     const tp = E.inOutCubic(P(t, T.tilt, T.tiltEnd));
     const tgt = { x: 370, y: -790, s: 1.6 };
-    cam = { x: lerp(base.x, tgt.x, tp), y: lerp(base.y, tgt.y, tp), s: lerp(base.s, tgt.s, tp) };
-    if (t > T.tiltEnd) { const q = P(t, T.tiltEnd, T.cut01); cam.s = lerp(1.6, 1.7, q); cam.y = lerp(-790, -780, q); }
-    cam.shake = (t > T.seams && t < T.seamsEnd + .4 ? 5 * Math.sin(P(t, T.seams, T.seamsEnd + .4) * Math.PI) : 0) + (t > T.shake ? 4 * Math.exp(-(t - T.shake) * 2) : 0);
+    const cam = { x: lerp(base.x, tgt.x, tp), y: lerp(base.y, tgt.y, tp), s: lerp(base.s, tgt.s, tp) };
+    if (t > T.tiltEnd) { const q = P(t, T.tiltEnd, T.cut01); cam.s = lerp(1.6, 1.72, q); cam.y = lerp(-790, -778, q); }
+    cam.shake = (t > T.seams && t < T.seamsEnd + .4 ? 3 * Math.sin(P(t, T.seams, T.seamsEnd + .4) * Math.PI) : 0) + (t > T.shake ? 3 * Math.exp(-(t - T.shake) * 2) : 0);
     drawRockyScene(t, cam);
+    bloom(.4);
     grainAndVignette(t, .9);
-    subtitle('Trick…', E.outCubic(P(t, T.v1, T.v1 + .25)) * (1 - P(t, T.v2 - .05, T.v2 + .1)), 1150);
-    subtitle('…or treat.', E.outCubic(P(t, T.v2, T.v2 + .25)) * (1 - P(t, T.cut01 - .2, T.cut01)), 1150);
+    const out = 1 - P(t, T.cut01 - .2, T.cut01);
+    subtitle('Trick…', E.outCubic(P(t, T.v1, T.v1 + .25)) * out, 1095);
+    subtitle('…or treat.', E.outCubic(P(t, T.v2, T.v2 + .25)) * out, 1210);
   } else if (t < T.sheet) {
     // 0.01 — candy detected
     const p = P(t, T.cut01, T.sheet);
     drawRoomScene(t, { x: lerp(500, 495, p), y: lerp(790, 800, p), s: lerp(1.75, 1.85, p) }, 'after');
+    bloom(.3);
     grainAndVignette(t);
   } else if (t < T.end) {
-    // scene 9: the reveal — pull back from the paper
-    const p = E.inOutCubic(P(t, T.sheet + .15, 26.5));
-    const cam = { x: lerp(300, SW / 2, p), y: lerp(560, SHH / 2 + 5, p), s: lerp(3.3, 1.08, p), r: lerp(-.06, -.015, p), seam: E.smooth(P(t, 26.2, 26.9)) * (.85 + .15 * vnoise(t * 9, 3)) };
+    // scene 9: the reveal — pull back from the paper (signature shot), then hold ≥1 s on the logo
+    const p = E.inOutCubic(P(t, T.pull0, T.pull1));
+    const cam = { x: lerp(300, SW / 2, p), y: lerp(560, SHH / 2 + 5, p), s: lerp(3.3, 1.08, p), r: lerp(-.06, -.015, p), seam: E.smooth(P(t, T.hit - .25, T.hit + .45)) * (.85 + .15 * vnoise(t * 9, 3)) };
     drawSheetScene(t, cam, { kind: 'orange' });
+    bloom(.28);
+    aberration(.016 * Math.exp(-(t - T.hit) * 7) * (t > T.hit ? 1 : 0));
     grainAndVignette(t, .8);
     const fo = P(t, T.end - .3, T.end); if (fo > 0) { ctx.fillStyle = `rgba(0,0,0,${fo})`; ctx.fillRect(0, 0, W, H); }
   } else {
     drawEnd(t);
+    bloom(.35);
     grainAndVignette(t, .7);
     const fo = P(t, DUR - .45, DUR); if (fo > 0) { ctx.fillStyle = `rgba(0,0,0,${fo})`; ctx.fillRect(0, 0, W, H); }
   }
 }
+
+// poster / thumbnail
+function renderPoster() {
+  render(19.7);
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const g = ctx.createLinearGradient(0, H * .62, 0, H); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.85)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = '700 112px Oswald'; ctx.letterSpacing = '6px'; ctx.shadowColor = 'rgba(255,60,30,.85)'; ctx.shadowBlur = 34; ctx.fillStyle = '#f6f0e6';
+  ctx.fillText('MAGNITUDE 10.31', W / 2, 1150);
+  ctx.font = '80px Creepster'; ctx.letterSpacing = '2px'; ctx.shadowColor = 'rgba(255,110,20,.9)'; ctx.fillStyle = '#ff8a1f';
+  ctx.fillText('#ROCKYHalloween', W / 2, 1262);
+  ctx.restore();
+}
+window.renderPoster = renderPoster;
 
 // ---------------------------------------------------------------- init
 function init() {
@@ -871,10 +982,10 @@ function init() {
     for (let j = 0; j < id.data.length; j += 4) { const v = 128 + (r() - .5) * 120; id.data[j] = id.data[j + 1] = id.data[j + 2] = v; id.data[j + 3] = 255; }
     gc.putImageData(id, 0, 0); grains.push(g);
   }
-  initRoom(); initSheet(); buildRocky(); markInit(); initEmbers();
+  initRoom(); initSheet(); buildRocky(); initEmbers();
 }
 window.render = render;
 window.ready = Promise.all([
-  document.fonts.load('40px Creepster'), document.fonts.load('40px SpecialElite'), document.fonts.load('700 40px Oswald'), document.fonts.load('700 40px "JetBrains Mono"'),
+  document.fonts.load('40px Creepster'), document.fonts.load('40px SpecialElite'), document.fonts.load('700 40px Oswald'), document.fonts.load('700 40px "JetBrains Mono"'), markInit(),
 ]).then(() => { init(); render(0); });
 })();

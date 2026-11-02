@@ -44,7 +44,7 @@ async function renderRange(browser, f0, f1, out) {
 
 async function video(workers) {
   const browser = await chromium.launch({ args: ['--allow-file-access-from-files'] });
-  const total = 30 * FPS;
+  const total = 32 * FPS;
   const outDir = path.join(__dirname, 'out'); fs.mkdirSync(outDir, { recursive: true });
   const chunk = Math.ceil(total / workers);
   const parts = [];

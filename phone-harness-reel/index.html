@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="fa">
+<head>
+<meta charset="utf-8">
+<title>phone-harness Reel</title>
+<style>
+@font-face{font-family:Vz;src:url(assets/fonts/vazirmatn-arabic-400-normal.woff2);font-weight:400;unicode-range:U+0600-06FF,U+200C-200F,U+FB50-FDFF,U+FE70-FEFF}
+@font-face{font-family:Vz;src:url(assets/fonts/vazirmatn-arabic-700-normal.woff2);font-weight:700;unicode-range:U+0600-06FF,U+200C-200F,U+FB50-FDFF,U+FE70-FEFF}
+@font-face{font-family:Vz;src:url(assets/fonts/vazirmatn-arabic-900-normal.woff2);font-weight:800 900;unicode-range:U+0600-06FF,U+200C-200F,U+FB50-FDFF,U+FE70-FEFF}
+@font-face{font-family:Vz;src:url(assets/fonts/vazirmatn-latin-400-normal.woff2);font-weight:400}
+@font-face{font-family:Vz;src:url(assets/fonts/vazirmatn-latin-700-normal.woff2);font-weight:700}
+@font-face{font-family:Vz;src:url(assets/fonts/vazirmatn-latin-800-normal.woff2);font-weight:800 900}
+@font-face{font-family:SS;src:url(assets/fonts/source-serif-4-latin-600-normal.woff2);font-weight:600}
+@font-face{font-family:SS;src:url(assets/fonts/source-serif-4-latin-700-normal.woff2);font-weight:700 900}
+:root{--bg:#F4F1EA;--fg:#1F1E1B;--fg2:#4A4842;--mute:#7A776E;--accent:#FF4438;--accent-d:#D9302A;--coral:#FF6F59;--card:#FFFFFF;--line:#E6DFD2;--green:#3F8A4F;--shadow:0 22px 50px rgba(84,58,34,.12),0 2px 6px rgba(84,58,34,.06)}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1920px;overflow:hidden;background:var(--bg);color:var(--fg);font-family:Vz,sans-serif}
+#stage{position:absolute;inset:0;overflow:hidden}
+#world{position:absolute;inset:0}
+.abs{position:absolute}
+.scene{position:absolute;inset:0;display:none}
+.rtl{direction:rtl;unicode-bidi:plaintext}
+.ltr{direction:ltr;unicode-bidi:isolate}
+#bg{position:absolute;inset:0;background:linear-gradient(170deg,#F9F6EF 0%,#F3EEE4 55%,#EEE6D8 100%)}
+.blob{position:absolute;border-radius:50%;filter:blur(85px)}
+#b1{width:900px;height:900px;background:radial-gradient(circle,rgba(255,138,112,.62),rgba(255,138,112,0) 68%)}
+#b2{width:950px;height:950px;background:radial-gradient(circle,rgba(229,208,170,.85),rgba(229,208,170,0) 68%)}
+#b3{width:850px;height:850px;background:radial-gradient(circle,rgba(190,212,186,.6),rgba(190,212,186,0) 68%)}
+#b4{width:760px;height:760px;background:radial-gradient(circle,rgba(255,68,56,.22),rgba(255,68,56,0) 70%)}
+#grid{position:absolute;inset:0;background-image:radial-gradient(rgba(90,64,40,.13) 1.6px,transparent 1.8px);background-size:44px 44px;mask-image:radial-gradient(ellipse at 50% 42%,#000 25%,transparent 80%)}
+#pc,#grain,#fx{position:absolute;inset:0}
+#vig{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 42%,transparent 55%,rgba(150,110,70,.16) 100%)}
+#whip{position:absolute;top:-400px;left:0;width:900px;height:2800px;background:linear-gradient(90deg,rgba(255,68,56,0),rgba(255,68,56,.92) 30%,#FF6F59 55%,rgba(255,111,89,0));transform-origin:50% 50%;display:none}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+#prog{position:absolute;left:0;top:0;height:8px;background:var(--accent);border-radius:0 8px 8px 0}
+/* subtitles (karaoke) */
+#sub{position:absolute;left:0;right:0;margin:0 auto;width:fit-content;max-width:1010px;top:1430px;text-align:center;font-size:45px;line-height:1.5;font-weight:900;padding:14px 34px 20px;border-radius:28px;background:#1F1E1B;color:#FAF7F0;box-shadow:0 20px 44px rgba(40,25,10,.25)}
+#sub .w{opacity:.45;transition:none}
+#sub .w.on{opacity:1}
+#sub .w.cur{opacity:1;color:#FF8C7A}
+/* shared bits */
+.pill{display:inline-flex;align-items:center;gap:14px;padding:12px 28px;border-radius:999px;font-weight:700;font-size:36px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);white-space:nowrap}
+.card{background:var(--card);border:1px solid var(--line);border-radius:32px;box-shadow:var(--shadow)}
+.h1{font-weight:900;font-size:78px;text-align:center;left:0;right:0;line-height:1.25}
+.ico{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.term{background:#22201C;border:1px solid #3A362F;border-radius:26px;overflow:hidden;box-shadow:0 30px 70px rgba(60,40,20,.28)}
+.term .bar{height:46px;background:#2E2B26;display:flex;align-items:center;gap:9px;padding:0 18px}
+.term .dot{width:13px;height:13px;border-radius:50%}
+.term .body{padding:20px 24px;font-size:25px;line-height:1.6;white-space:pre;direction:ltr;color:#ECE6D9;font-family:"DejaVu Sans Mono",monospace}
+.ok{color:#8CC48F} .cm{color:#FF8C7A} .dim{color:#958E80} .yl{color:#E8C170}
+/* phone */
+#phone{position:absolute;left:0;top:0;width:560px;height:1196px;transform-origin:50% 50%;will-change:transform}
+#phone .body{position:absolute;inset:0;border-radius:96px;background:linear-gradient(145deg,#3A3835,#141311 60%,#2C2A27);box-shadow:0 60px 120px rgba(60,35,15,.38),0 0 0 3px #4D4A45 inset,0 0 0 9px #1A1917 inset}
+#phone .scr{position:absolute;left:22px;top:22px;width:516px;height:1152px;border-radius:76px;overflow:hidden;background:#000}
+#phone .scr img{position:absolute;left:0;top:0;width:516px;height:1152px}
+#phone canvas{position:absolute;left:0;top:0}
+#phone .island{position:absolute;left:210px;top:44px;width:140px;height:40px;border-radius:20px;background:#000}
+#phone .glare{position:absolute;inset:0;border-radius:96px;background:linear-gradient(115deg,rgba(255,255,255,.16) 0%,rgba(255,255,255,0) 35%,rgba(255,255,255,0) 70%,rgba(255,255,255,.06) 100%);pointer-events:none}
+/* hook */
+#h-chat{left:80px;right:80px;top:220px;height:150px;display:flex;align-items:center;gap:24px;padding:0 30px;border-radius:80px}
+#h-chat .av{width:90px;height:90px;border-radius:50%;background:var(--fg);color:#fff;display:flex;align-items:center;justify-content:center;font-size:52px;flex:none}
+#h-chat .tx{flex:1;font-size:54px;font-weight:900}
+#h-chat .send{width:90px;height:90px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:50px;flex:none}
+#h-real{font-size:64px;font-weight:900;padding:16px 40px;background:var(--accent);color:#fff;border:none}
+/* reveal */
+.agent{font-family:Vz;font-weight:800;font-size:34px;padding:14px 28px;direction:ltr}
+/* abilities */
+.ab{display:flex;align-items:center;gap:24px;font-size:58px;white-space:nowrap;font-weight:900;height:150px;padding:0 34px;border-radius:40px;margin-bottom:22px;background:rgba(255,255,255,.55);border:1px solid var(--line)}
+.ab .ic{width:96px;height:96px;border-radius:28px;background:rgba(255,68,56,.12);color:var(--accent-d);display:flex;align-items:center;justify-content:center;font-size:56px;flex:none}
+.ab.on{background:#fff;box-shadow:var(--shadow);border-color:rgba(255,68,56,.45)}
+.ab.on .ic{background:var(--accent);color:#fff}
+/* no install */
+.ni{height:200px;display:flex;align-items:center;justify-content:space-between;padding:0 50px;margin-bottom:36px}
+.ni .t{font-size:70px;font-weight:900}
+.stamp{width:130px;height:130px;border-radius:50%;border:8px solid var(--accent);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:80px}
+/* demo */
+.step{display:flex;align-items:center;gap:20px;font-size:38px;font-weight:800;padding:20px 26px;margin-bottom:18px}
+.step .n{width:62px;height:62px;border-radius:50%;background:#EFE9DE;color:var(--fg2);display:flex;align-items:center;justify-content:center;font-size:34px;flex:none}
+.step.done .n{background:var(--green);color:#fff}
+.step.cur .n{background:var(--accent);color:#fff}
+/* platforms */
+.pf{width:300px;height:420px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;text-align:center}
+.pf .ic{width:120px;height:120px;border-radius:34px;background:rgba(255,68,56,.11);color:var(--accent-d);display:flex;align-items:center;justify-content:center;font-size:72px}
+.pf b{font-size:46px;font-weight:900;direction:ltr}
+.pf span{font-size:28px;color:var(--mute);line-height:1.4}
+/* setup */
+.chk{display:flex;align-items:center;gap:22px;font-size:42px;font-weight:800;padding:20px 30px;margin-bottom:18px}
+.chk .b{width:64px;height:64px;border-radius:50%;border:5px solid #D8CFBF;display:flex;align-items:center;justify-content:center;font-size:40px;color:#fff;flex:none}
+.chk.done .b{background:var(--green);border-color:var(--green)}
+/* cta */
+#c-box{left:70px;width:940px;top:640px;height:180px;display:flex;align-items:center;gap:26px;padding:0 36px;border-radius:100px;border-color:rgba(255,68,56,.55)}
+</style>
+</head>
+<body>
+<div id="stage">
+ <div id="bg"></div><div class="blob" id="b1"></div><div class="blob" id="b2"></div><div class="blob" id="b3"></div><div class="blob" id="b4"></div>
+ <div id="grid"></div><canvas id="pc" width="1080" height="1920"></canvas>
+ <div id="world">
+
+  <!-- HOOK -->
+  <div class="scene" id="s-hook">
+    <div id="h-chat" class="abs card rtl">
+      <div class="av"><svg class="ico" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="13" rx="3"/><path d="M8.5 10.5h.01M15.5 10.5h.01M9 14.5c1.6 1 4.4 1 6 0"/><path d="M12 5V2.5"/></svg></div>
+      <div class="tx" id="h-type"></div>
+      <div class="send"><svg class="ico" viewBox="0 0 24 24"><path d="M5 12h13M12.5 6.5L18 12l-5.5 5.5"/></svg></div>
+    </div>
+    <div id="h-realw" class="abs rtl" style="left:0;right:0;top:1270px;display:flex;justify-content:center"><div class="pill" id="h-real">با گوشی واقعی تو</div></div>
+  </div>
+
+  <!-- REVEAL -->
+  <div class="scene" id="s-reveal">
+    <div id="r-logo" class="abs" style="left:60px;width:960px;top:220px"></div>
+    <div id="r-tag" class="abs" style="left:0;right:0;top:470px;text-align:center;font-size:46px;font-weight:400;direction:ltr;color:#64695f">Let your agent <span style="color:var(--accent);font-weight:700">use your phone.</span></div>
+    <div id="r-chips" class="abs rtl" style="left:0;right:0;top:570px;display:flex;justify-content:center;gap:18px">
+      <div class="pill">رایگان</div><div class="pill">متن‌باز · <span class="ltr">MIT</span></div><div class="pill"><span class="ltr" style="color:var(--accent-d)">4,100+</span> ستاره</div>
+    </div>
+    <svg id="r-lines" class="abs" style="left:0;top:0" width="1080" height="1920"></svg>
+    <div id="r-agents"></div>
+  </div>
+
+  <!-- ABILITIES -->
+  <div class="scene" id="s-abilities">
+    <div id="ab-list" class="abs rtl" style="left:505px;width:540px;top:430px">
+      <div class="ab"><div class="ic"><svg class="ico" viewBox="0 0 24 24"><path d="M12 20V5M7 9.5L12 4.5l5 5"/></svg></div>اسکرول</div>
+      <div class="ab"><div class="ic"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7.5" stroke-opacity=".5"/></svg></div>تپ</div>
+      <div class="ab"><div class="ic"><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="6.5" width="18" height="11" rx="2.5"/><path d="M7 10h.01M10 10h.01M13 10h.01M16 10h.01M8 14h8"/></svg></div>تایپ</div>
+      <div class="ab"><div class="ic"><svg class="ico" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg></div>خواندن صفحه</div>
+    </div>
+  </div>
+
+  <!-- NO INSTALL -->
+  <div class="scene" id="s-noinstall">
+    <div class="abs rtl h1" id="ni-h" style="top:250px">بدون هیچ دردسری</div>
+    <div id="ni-list" class="abs rtl" style="left:90px;right:90px;top:430px">
+      <div class="card ni"><div class="t">جیلبریک</div><div class="stamp"><svg class="ico" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></div></div>
+      <div class="card ni"><div class="t ltr" style="font-family:SS,Vz;direction:ltr">Xcode</div><div class="stamp"><svg class="ico" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></div></div>
+      <div class="card ni"><div class="t">نصب روی گوشی</div><div class="stamp"><svg class="ico" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></div></div>
+    </div>
+  </div>
+
+  <!-- DEMO -->
+  <div class="scene" id="s-demo">
+    <div id="d-head" class="abs rtl" style="left:0;right:0;top:215px;display:flex;justify-content:center;gap:16px">
+      <div class="pill" style="background:var(--accent);color:#fff;border:none"><span id="d-rec" style="width:18px;height:18px;border-radius:50%;background:#fff;display:inline-block"></span>دموی واقعی پروژه</div>
+      <div class="pill ltr" style="font-size:30px">Claude Code + iPhone</div>
+    </div>
+    <div id="d-term" class="abs term" style="left:540px;top:330px;width:500px;height:640px">
+      <div class="bar"><div class="dot" style="background:#FF5F57"></div><div class="dot" style="background:#FEBC2E"></div><div class="dot" style="background:#28C840"></div><div class="dim" style="margin-left:12px;font-size:18px;font-family:monospace">claude code</div></div>
+      <img id="d-timg" style="display:block;width:500px;height:625px;object-fit:cover;object-position:0 0">
+    </div>
+    <div id="d-steps" class="abs rtl" style="left:540px;width:500px;top:1000px">
+      <div class="card step"><div class="n">۱</div>باز کردن اپ Waymo</div>
+      <div class="card step"><div class="n">۲</div>پیدا کردن مقصد</div>
+      <div class="card step"><div class="n">۳</div>تأیید قبل از رزرو</div>
+    </div>
+  </div>
+
+  <!-- PLATFORMS -->
+  <div class="scene" id="s-platforms">
+    <div id="p-code" class="abs term" style="left:150px;width:780px;top:240px">
+      <div class="bar"><div class="dot" style="background:#FF5F57"></div><div class="dot" style="background:#FEBC2E"></div><div class="dot" style="background:#28C840"></div><div class="dim" style="margin-left:12px;font-size:18px;font-family:monospace">one script</div></div>
+      <div class="body" style="font-size:27px"><span class="cm">phone-harness</span> &lt;&lt;'PY'
+<span class="yl">open_app</span>("Notes")
+<span class="yl">tap_text</span>("New Note")
+<span class="yl">type_text</span>("hello from the harness")
+PY</div>
+    </div>
+    <svg id="p-arrows" class="abs" style="left:0;top:0" width="1080" height="1920"></svg>
+    <div id="p-cards" class="abs rtl" style="left:45px;right:45px;top:820px;display:flex;justify-content:space-between">
+      <div class="card pf"><div class="ic"><svg class="ico" viewBox="0 0 24 24"><rect x="6.5" y="2.5" width="11" height="19" rx="2.8"/><path d="M10.5 5h3"/></svg></div><b>iPhone</b><span>از طریق<br><span class="ltr">iPhone Mirroring</span></span></div>
+      <div class="card pf"><div class="ic"><svg class="ico" viewBox="0 0 24 24"><rect x="6.5" y="2.5" width="11" height="19" rx="2"/><path d="M10.5 19h3"/></svg></div><b>Android</b><span>با <span class="ltr">adb</span><br>مک، لینوکس، ویندوز</span></div>
+      <div class="card pf"><div class="ic"><svg class="ico" viewBox="0 0 24 24"><path d="M7 18.5h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.1 9.3 4.6 4.6 0 0 0 7 18.5z"/></svg></div><b>Cloud</b><span>گوشی ابری<br>اندروید و آیفون</span></div>
+    </div>
+  </div>
+
+  <!-- SETUP -->
+  <div class="scene" id="s-setup">
+    <div class="abs rtl h1" id="su-h" style="top:230px">نصب با یک پرامپت</div>
+    <div id="su-prompt" class="abs card" style="left:70px;right:70px;top:380px;padding:30px 34px;direction:ltr;font-size:29px;line-height:1.5;color:var(--fg2);min-height:230px"><span id="su-type"></span></div>
+    <div id="su-list" class="abs rtl" style="left:110px;right:110px;top:690px">
+      <div class="card chk"><div class="b"><svg class="ico" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>نصب <span class="ltr" style="font-family:SS,Vz">phone-harness</span></div>
+      <div class="card chk"><div class="b"><svg class="ico" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>انتخاب گوشی</div>
+      <div class="card chk"><div class="b"><svg class="ico" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>راهنمایی قدم‌به‌قدم</div>
+    </div>
+    <div id="su-flow" class="abs term" style="left:110px;right:110px;top:1080px">
+      <div class="body" style="font-size:25px;padding:22px 30px"><span class="cm">●</span> find_text("Weather") <span class="dim">→ (400, 468)</span>
+<span class="cm">●</span> tap(400, 468) <span class="dim">→ forecast is up</span>
+<span class="ok">✓ done</span></div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="scene" id="s-cta">
+    <div id="c-mark" class="abs" style="left:415px;top:230px;width:250px"></div>
+    <div id="c-h" class="abs rtl h1" style="top:470px;font-size:68px">لینک و پرامپت نصب رو می‌خوای؟</div>
+    <div id="c-box" class="abs card rtl">
+      <div style="width:110px;height:110px;border-radius:50%;background:linear-gradient(135deg,#FF4438,#FFB49F);flex:none"></div>
+      <div id="c-type" style="font-size:90px;font-weight:900;flex:1"></div>
+      <div style="width:110px;height:110px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:60px;flex:none"><svg class="ico" viewBox="0 0 24 24"><path d="M5 12h13M12.5 6.5L18 12l-5.5 5.5"/></svg></div>
+    </div>
+    <div id="c-say" class="abs rtl" style="left:0;right:0;top:890px;text-align:center;font-size:60px;font-weight:900">کامنت کنید: «<span style="color:var(--accent)">میخوام</span>»</div>
+    <div id="c-say2" class="abs rtl" style="left:0;right:0;top:985px;display:flex;justify-content:center;align-items:center;gap:14px;font-size:44px;font-weight:700;color:var(--fg2)">تا براتون بفرستم<span style="color:var(--accent);display:inline-flex"><svg class="ico" viewBox="0 0 24 24"><path d="M12 5v13.5M6.5 13L12 18.5 17.5 13"/></svg></span></div>
+    <div id="c-repo" class="abs" style="left:0;right:0;top:1110px;text-align:center;font-size:34px;color:var(--mute);direction:ltr">github.com/phone-harness/phone-harness</div>
+  </div>
+
+  <div id="phone"><div class="body"></div><div class="scr"><img id="ph-img"><canvas id="ph-ov" width="516" height="1152"></canvas></div><div class="island"></div><div class="glare"></div></div>
+ </div>
+ <canvas id="grain" width="540" height="960" style="width:1080px;height:1920px;opacity:.07;mix-blend-mode:multiply"></canvas>
+ <div id="vig"></div>
+ <div id="whip"></div>
+ <div id="flash"></div>
+ <div id="prog"></div>
+ <div id="sub" class="rtl"></div>
+</div>
+<script src="timeline.js"></script>
+<script src="assets/brand/logo.js"></script>
+<script>
+const TL = window.TL, $ = id => document.getElementById(id), W = 1080, H = 1920;
+const clamp = (x, a=0, b=1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, x) => a + (b - a) * x;
+const ease = x => { x = clamp(x); return x<.5 ? 4*x*x*x : 1-Math.pow(-2*x+2,3)/2; };
+const out = x => 1 - Math.pow(1 - clamp(x), 3);
+const out5 = x => 1 - Math.pow(1 - clamp(x), 5);
+const back = x => { x = clamp(x); const c=1.9; return 1 + (c+1)*Math.pow(x-1,3) + c*Math.pow(x-1,2); };
+const sc = id => TL.scenes.find(s => s.id === id);
+const LN = id => TL.lines.filter(l => l.scene === id);
+const lnS = (id, k=0) => LN(id)[k].start - sc(id).start, lnE = (id, k=0) => LN(id)[k].end - sc(id).start;
+// where inside a line a given word starts (by character weight), as scene-local time
+function wordAt(id, needle, k=0) {
+  const L = LN(id)[k], i = L.text.indexOf(needle); if (i < 0) return lnS(id, k);
+  return lnS(id, k) + (L.end - L.start) * (i / L.text.length);
+}
+function set(el, o, tx=0, ty=0, s=1, r=0) { el.style.opacity = o; el.style.transform = `translate(${tx}px,${ty}px) scale(${s}) rotate(${r}deg)`; }
+const pop = (u, a, d=.4) => [out((u - a) / d), .8 + .2 * back((u - a) / (d + .05))];
+function setImg(el, src) { if (el.dataset.src !== src) { el.dataset.src = src; el.src = src; } return el.decode().catch(()=>{}); }
+const pad4 = n => String(n).padStart(4, '0');
+const GIFN = 364, gifFrame = s => Math.max(0, Math.min(GIFN - 1, Math.floor(s * 12)));
+let SHAKE = 0;
+
+// ---------- cues for the sound track (read by render.js) ----------
+function cues() {
+  const c = [];
+  TL.scenes.slice(1).forEach(s => c.push({t: s.start - .18, k: 'whoosh'}));
+  c.push({t: sc('reveal').start - 1.0, k: 'riser'}, {t: sc('reveal').start + .02, k: 'impact'});
+  const h = sc('hook').start; for (let i = 0; i < 9; i++) c.push({t: h + .35 + i * .14, k: 'key'}); c.push({t: h + 1.75, k: 'pop'});
+  c.push({t: h + 3.1, k: 'tap'}, {t: h + 4.4, k: 'tap'});
+  const a = sc('abilities').start; c.push({t: a + wordAt('abilities', 'تپ') + .25, k: 'tap'});
+  for (let i = 0; i < 6; i++) c.push({t: a + wordAt('abilities', 'تایپ') + .1 + i * .11, k: 'key'});
+  c.push({t: a + wordAt('abilities', 'صفحه'), k: 'scan'});
+  const n = sc('noinstall').start; NI_AT().forEach(x => c.push({t: n + x, k: 'stamp'}));
+  const d = sc('demo').start; DSTEP_AT().forEach(x => c.push({t: d + x, k: 'ding'}));
+  const p = sc('platforms').start; [0, 1, 2].forEach(i => c.push({t: p + .5 + i * .3, k: 'pop'}));
+  const su = sc('setup').start; for (let i = 0; i < 14; i++) c.push({t: su + .3 + i * .09, k: 'key'}); [0,1,2].forEach(i => c.push({t: su + SU_AT(i), k: 'ding'}));
+  const ct = sc('cta').start; for (let i = 0; i < 6; i++) c.push({t: ct + .8 + i * .16, k: 'key'}); c.push({t: ct + 1.9, k: 'impact'});
+  return c.sort((x, y) => x.t - y.t);
+}
+const NI_AT = () => ['جیلبریک', 'Xcode', 'نصب'].map(w => wordAt('noinstall', w) + .15);
+const DSTEP_AT = () => [demoAtGif(5.0), demoAtGif(11.0), demoAtGif(29.2)];
+const SU_AT = i => 1.9 + i * .75;
+
+// ---------- background ----------
+const PARTS = (() => { let x = 2468013; const r = () => (x = (x * 16807) % 2147483647) / 2147483647;
+  return Array.from({length: 60}, () => ({x: r()*W, y: r()*H, z: .3 + r()*.7, s: .6 + r()*2.4, ph: r()*6.28, hue: r()})); })();
+const NOISE = (() => { const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d'), d = g.createImageData(256, 256);
+  let x = 99; for (let i = 0; i < d.data.length; i += 4) { x = (x * 16807) % 2147483647; const v = x % 256; d.data[i] = d.data[i+1] = d.data[i+2] = v; d.data[i+3] = 255; }
+  g.putImageData(d, 0, 0); return c; })();
+function drawBackground(t, f) {
+  const B = [['b1', 150, 300, .050, .037, 240, 280], ['b2', 900, 1000, .041, .055, 220, 300], ['b3', 250, 1550, .062, .044, 260, 240], ['b4', 950, 250, .033, .047, 180, 200]];
+  for (const [id, x, y, fx, fy, ax, ay] of B) {
+    const e = $(id), dx = ax * Math.sin(t * fx * 2.1 + x), dy = ay * Math.cos(t * fy * 2.1 + y);
+    e.style.transform = `translate(${x + dx - 450}px,${y + dy - 450}px) scale(${1 + .1 * Math.sin(t * .21 + x)})`;
+  }
+  $('grid').style.backgroundPosition = `0 ${(t * 6) % 44}px`;
+  const c = $('pc').getContext('2d'); c.clearRect(0, 0, W, H);
+  PARTS.forEach((p, i) => {
+    const y = ((p.y - t * 16 * p.z) % (H + 160) + H + 160) % (H + 160) - 80, x = p.x + 22 * Math.sin(t * .35 * p.z + p.ph);
+    if (i % 5 === 0) { c.strokeStyle = `rgba(255,68,56,${.15 * p.z})`; c.lineWidth = 3; c.beginPath(); c.arc(x, y, 14 + p.s * 10, 0, 6.283); c.stroke(); }
+    else if (i % 5 === 1) { c.save(); c.translate(x, y); c.rotate(t * .25 * (p.hue - .5) + p.ph); c.strokeStyle = `rgba(120,140,110,${.17 * p.z})`; c.lineWidth = 3;
+      const r = 10 + p.s * 7; c.beginPath(); c.roundRect(-r, -r, 2 * r, 2 * r, r * .35); c.stroke(); c.restore(); }
+    else { const a = (.16 + .22 * (.5 + .5 * Math.sin(t * 1.1 + p.ph))) * p.z;
+      c.fillStyle = p.hue < .5 ? `rgba(255,90,70,${a})` : p.hue < .8 ? `rgba(196,160,110,${a})` : `rgba(120,150,110,${a})`;
+      c.beginPath(); c.arc(x, y, p.s * p.z * 1.4, 0, 6.283); c.fill(); }
+  });
+  const g = $('grain').getContext('2d'), ox = (f * 73) % 256, oy = (f * 151) % 256;
+  g.save(); g.translate(-ox, -oy); g.fillStyle = g.createPattern(NOISE, 'repeat'); g.fillRect(0, 0, 540 + 256, 960 + 256); g.restore();
+}
+
+// ---------- phone ----------
+const LAYOUT = {
+  hook:      {cx: 540, cy: 840, s: .78, ry: -8, rz: -3, o: 1},
+  reveal:    {cx: 540, cy: 1110, s: .48, ry: 0, rz: 0, o: 1},
+  abilities: {cx: 268, cy: 840, s: .72, ry: 10, rz: 0, o: 1},
+  noinstall: {cx: 540, cy: 2400, s: .5, ry: 0, rz: 8, o: 0},
+  demo:      {cx: 285, cy: 820, s: .82, ry: 0, rz: 0, o: 1},
+  platforms: {cx: 540, cy: 2400, s: .5, ry: 0, rz: -8, o: 0},
+  setup:     {cx: 540, cy: 2400, s: .5, ry: 0, rz: 0, o: 0},
+  cta:       {cx: 540, cy: 2400, s: .5, ry: 0, rz: 0, o: 0},
+};
+function placePhone(t, sid, u) {
+  const i = TL.scenes.findIndex(s => s.id === sid), prev = i > 0 ? LAYOUT[TL.scenes[i - 1].id] : null, cur = LAYOUT[sid];
+  let L = {...cur};
+  if (sid === 'hook') {   // flies in from below
+    const e = out5((u - 1.6) / .9); L = {...cur, cy: lerp(2300, cur.cy, e), ry: lerp(-35, cur.ry, e) + 2 * Math.sin(u * 1.3), rz: lerp(12, cur.rz, e), o: clamp((u - 1.6) / .2)};
+  } else if (prev) { const e = ease(u / .7); for (const k in cur) L[k] = lerp(prev[k], cur[k], e); }
+  const ph = $('phone'), fl = Math.sin(t * 1.4) * 8;
+  ph.style.opacity = L.o; ph.style.display = L.o < .01 ? 'none' : 'block';
+  ph.style.transform = `translate(${L.cx - 280}px,${L.cy - 598 + fl}px) perspective(1800px) rotateY(${L.ry}deg) rotateZ(${L.rz}deg) scale(${L.s})`;
+}
+const OV = () => $('ph-ov').getContext('2d');
+function ripple(c, x, y, p) { if (p <= 0 || p >= 1) return; c.strokeStyle = `rgba(255,68,56,${1 - p})`; c.lineWidth = 10 * (1 - p) + 2;
+  c.beginPath(); c.arc(x, y, 20 + 110 * out(p), 0, 6.283); c.stroke(); c.fillStyle = `rgba(255,68,56,${.45 * (1 - p)})`; c.beginPath(); c.arc(x, y, 34 * (1 - p * .5), 0, 6.283); c.fill(); }
+function finger(c, x, y, a) { c.fillStyle = `rgba(255,255,255,${.85 * a})`; c.strokeStyle = `rgba(255,68,56,${a})`; c.lineWidth = 6; c.beginPath(); c.arc(x, y, 34, 0, 6.283); c.fill(); c.stroke(); }
+
+// ---------- demo time map: scene-local u -> gif seconds ----------
+const DSEG = [{a: 4.0, b: 9.6, sp: 2.4}, {a: 9.8, b: 15.2, sp: 2.2}, {a: 17.5, b: 23.0, sp: 1.8}, {a: 28.6, b: 30.3, sp: 1.0}];
+const DLEAD = .45;
+function demoGif(u) { let v = Math.max(0, u - DLEAD);
+  for (const s of DSEG) { const len = (s.b - s.a) / s.sp; if (v < len) return s.a + v * s.sp; v -= len; } return 30.3; }
+function demoAtGif(g) { let u = DLEAD; for (const s of DSEG) { if (g <= s.b) return u + Math.max(0, g - s.a) / s.sp; u += (s.b - s.a) / s.sp; } return u; }
+
+// ---------- subtitles ----------
+let subKey = null;
+function drawSub(t) {
+  const L = TL.lines.find(l => t >= l.start - .1 && t < l.end + .25), sub = $('sub');
+  if (!L) { sub.style.opacity = 0; return; }
+  if (subKey !== L.i) { subKey = L.i; sub.innerHTML = L.text.split(' ').map(w => `<span class="w">${w}</span>`).join(' '); }
+  const ws = [...sub.querySelectorAll('.w')], total = L.text.length, p = (t - L.start) / (L.end - L.start) * total;
+  let acc = 0; ws.forEach(w => { const a = acc; acc += w.textContent.length + 1; w.className = 'w' + (p >= acc ? ' on' : p >= a ? ' cur' : ''); });
+  const o = clamp((t - L.start + .1) / .12) * (1 - clamp((t - L.end - .13) / .12));
+  sub.style.opacity = o; sub.style.transform = `translateY(${18 * (1 - out((t - L.start + .1) / .25))}px)`;
+}
+
+// ---------- logo ----------
+let logoSvg = null, markSvg = null;
+function mountLogo() {
+  $('r-logo').innerHTML = window.LOGO_SVG; logoSvg = $('r-logo').querySelector('svg'); logoSvg.setAttribute('width', '960'); logoSvg.removeAttribute('height'); logoSvg.pauseAnimations();
+  $('c-mark').innerHTML = window.LOGO_SVG; markSvg = $('c-mark').querySelector('svg'); markSvg.setAttribute('viewBox', '-95 -85 360 345'); markSvg.setAttribute('width', '250'); markSvg.removeAttribute('height'); markSvg.pauseAnimations(); markSvg.setCurrentTime(1.7);
+}
+
+// ---------- agents around the phone in the reveal ----------
+const AGENTS = [['Claude Code', 250, 860], ['Codex', 830, 860], ['OpenClaw', 230, 1330], ['Hermes', 850, 1330], ['MCP', 540, 760]];
+(function buildAgents() { const box = $('r-agents');
+  AGENTS.forEach(([n], i) => { const d = document.createElement('div'); d.className = 'abs pill agent'; d.id = 'ag' + i; d.textContent = n; box.appendChild(d); }); })();
+
+// ---------- main ----------
+window.CUES = null;
+window.render = async function(t) {
+  const f = Math.round(t * 30), waits = [];
+  if (!logoSvg) mountLogo();
+  SHAKE = 0;
+  drawBackground(t, f);
+  $('prog').style.width = (t / TL.duration * W) + 'px';
+  const ov = OV(); ov.clearRect(0, 0, 516, 1152);
+  let phoneSrc = null;
+  for (const s of TL.scenes) {
+    const el = $('s-' + s.id), u = t - s.start, D = s.end - s.start;
+    const vis = t >= s.start - .001 && t < s.end;
+    el.style.display = vis ? 'block' : 'none';
+    if (!vis) continue;
+    el.style.opacity = clamp(u / .2) * (1 - clamp((u - (D - .15)) / .15));
+    placePhone(t, s.id, u);
+    phoneSrc = SCENES[s.id](u, D, ov);
+  }
+  if (phoneSrc != null) waits.push(setImg($('ph-img'), `footage/phone/${pad4(gifFrame(phoneSrc))}.jpg`));
+  // whip transitions
+  const wp = $('whip'); let shown = false;
+  for (const s of TL.scenes.slice(1)) { const p = (t - (s.start - .28)) / .56;
+    if (p > 0 && p < 1) { shown = true; wp.style.display = 'block'; wp.style.transform = `translateX(${lerp(-1100, 1300, ease(p))}px) rotate(14deg)`; } }
+  if (!shown) wp.style.display = 'none';
+  const rv = t - sc('reveal').start; $('flash').style.opacity = rv > -.05 && rv < .5 ? .85 * (1 - clamp(rv / .5)) : 0;
+  $('world').style.transform = SHAKE ? `translate(${SHAKE * Math.sin(f * 2.7)}px,${SHAKE * Math.cos(f * 3.1)}px)` : '';
+  drawSub(t);
+  await Promise.all(waits);
+};
+
+const SCENES = {
+  hook(u, D, ov) {
+    const word = 'برام یه تاکسی بگیر', n = Math.floor(clamp((u - .3) / 1.25) * (word.length + .99));
+    $('h-type').textContent = word.slice(0, n) + (n < word.length || Math.floor(u * 2.4) % 2 ? '|' : '');
+    let [o, s] = pop(u, 0, .45); set($('h-chat'), o, 0, -40 * (1 - o), s * (u > 1.75 && u < 2 ? 1 + .05 * Math.sin((u - 1.75) / .25 * Math.PI) : 1));
+    const src = u < 2.5 ? 0 : clamp(4 + (u - 2.5) * 4.2, 4, 21);
+    ripple(ov, 120, 140, (u - 3.1) / .7); ripple(ov, 270, 330, (u - 4.4) / .7);
+    const ra = wordAt('hook', 'گوشی') - .1; [o, s] = pop(u, ra, .45); set($('h-realw'), o, 0, 0, s, -2 * (1 - o));
+    return src;
+  },
+  reveal(u, D) {
+    logoSvg.setCurrentTime(clamp(u * 1.15, 0, 1.7));
+    set($('r-logo'), clamp(u / .1), 0, 0, 1 + .05 * (1 - out(u / .6)));
+    set($('r-tag'), out((u - 1.0) / .5), 0, 20 * (1 - out((u - 1.0) / .5)));
+    const ch = $('r-chips').children; for (let i = 0; i < ch.length; i++) { const [o, s] = pop(u, 1.4 + i * .25, .35); set(ch[i], o, 0, 0, s); }
+    const lines = []; const ag0 = wordAt('reveal', 'Claude') - .2;
+    AGENTS.forEach(([n, x, y], i) => { const el = $('ag' + i), a = ag0 + i * .32, [o, s] = pop(u, a, .35);
+      el.style.left = (x - el.offsetWidth / 2) + 'px'; el.style.top = (y - 40) + 'px'; set(el, o, 0, 10 * Math.sin(u * 1.5 + i), s);
+      const k = clamp((u - a - .15) / .45); if (k > 0) lines.push(`<line x1="${x}" y1="${y}" x2="540" y2="1110" stroke="#FF4438" stroke-opacity="${.55 * k}" stroke-width="4" stroke-dasharray="10 12" stroke-dashoffset="${-u * 60}"/>`); });
+    $('r-lines').innerHTML = lines.join('');
+    return 20.0;
+  },
+  abilities(u, D, ov) {
+    const at = [wordAt('abilities', 'اسکرول') - .1, wordAt('abilities', 'تپ'), wordAt('abilities', 'تایپ'), wordAt('abilities', 'صفحه') - .2];
+    const k = at.filter(a => u >= a).length - 1, rows = $('ab-list').children;
+    for (let i = 0; i < 4; i++) { const [o, s] = pop(u, .25 + i * .12, .35); rows[i].className = 'ab' + (i === k ? ' on' : '');
+      set(rows[i], o * (i === k ? 1 : .55 + .45 * (i < k)), (i === k ? -14 : 0), 0, s * (i === k ? 1.04 : 1)); }
+    let src = 1.0;
+    if (k <= 0) { const p = clamp((u - at[0]) / 1.0); src = 1.0; const y = lerp(900, 380, ease(p));
+      ov.strokeStyle = 'rgba(255,68,56,.55)'; ov.lineWidth = 16; ov.lineCap = 'round'; ov.beginPath(); ov.moveTo(258, 900); ov.lineTo(258, y); ov.stroke(); finger(ov, 258, y, clamp(p * 4) * (1 - clamp((p - .85) / .15))); }
+    else if (k === 1) { src = 9.0; ripple(ov, 270, 330, (u - at[1] - .25) / .7); finger(ov, 270, 330, clamp((u - at[1]) / .2) * (1 - clamp((u - at[1] - .35) / .2))); }
+    else if (k === 2) { src = clamp(10.3 + (u - at[2]) * 1.1, 10.3, 11.6); }
+    else { src = 19.0; const p = clamp((u - at[3]) / 1.1), y = lerp(80, 1130, p);
+      ov.fillStyle = 'rgba(255,68,56,.18)'; ov.fillRect(0, y - 40, 516, 40); ov.fillStyle = '#FF4438'; ov.fillRect(0, y - 3, 516, 6);
+      [[150, 690, 210, 70], [135, 515, 215, 56], [140, 1035, 230, 60], [40, 760, 430, 46]].forEach(([x, by, w, h]) => { if (y > by + h) {
+        ov.strokeStyle = '#FF4438'; ov.lineWidth = 5; ov.strokeRect(x, by, w, h); ov.fillStyle = 'rgba(255,68,56,.12)'; ov.fillRect(x, by, w, h); } }); }
+    return src;
+  },
+  noinstall(u) {
+    set($('ni-h'), out(u / .4), 0, 30 * (1 - out(u / .4)));
+    const at = NI_AT(), cards = $('ni-list').children;
+    for (let i = 0; i < 3; i++) { const a = at[i] - .45, [o] = pop(u, a, .35); set(cards[i], o, 60 * (1 - o), 0, 1);
+      const st = cards[i].querySelector('.stamp'), p = (u - at[i]) / .22; set(st, clamp(p * 3), 0, 0, p < 0 ? 2.2 : lerp(2.2, 1, out(p)), -12);
+      if (p > 0 && p < .5) SHAKE = Math.max(SHAKE, 9 * (1 - p / .5)); }
+  },
+  demo(u, D) {
+    const g = demoGif(u);
+    $('d-rec').style.opacity = Math.floor(u * 2.5) % 2 ? .35 : 1;
+    let [o, s] = pop(u, .1, .4); set($('d-head'), o, 0, 0, s);
+    set($('d-term'), out((u - .3) / .45), 40 * (1 - out((u - .3) / .45)), 0);
+    const tt = $('d-timg'); setImg(tt, `footage/term/${pad4(gifFrame(g))}.jpg`);
+    const at = DSTEP_AT(), st = $('d-steps').children;
+    for (let i = 0; i < 3; i++) { const a = i ? at[i - 1] + .2 : .6, [o2, s2] = pop(u, a, .35); st[i].className = 'card step' + (u >= at[i] ? ' done' : u >= a ? ' cur' : '');
+      set(st[i], o2, 30 * (1 - o2), 0, s2); }
+    return g;
+  },
+  platforms(u) {
+    set($('p-code'), out(u / .4), 0, -30 * (1 - out(u / .4)));
+    const cs = $('p-cards').children, xs = [195, 540, 885], go = wordAt('platforms', 'اسکریپت') - .2;
+    for (let i = 0; i < 3; i++) { const [o, s] = pop(u, .5 + i * .3, .4); set(cs[i], o, 0, 50 * (1 - o), s * (u > go + .5 + i * .12 ? 1 + .03 * Math.sin((u - go - .5 - i * .12) * 9) * (1 - clamp(u - go - 1.1 - i * .12)) : 1)); }
+    let svg = ''; xs.forEach((x, i) => { const k = clamp((u - go - i * .12) / .5); if (k <= 0) return;
+      const y0 = 540, y1 = lerp(y0, 800, out(k)), x1 = lerp(540, x, out(k));
+      svg += `<path d="M540 ${y0} Q ${(540 + x1) / 2} ${(y0 + y1) / 2 - 40} ${x1} ${y1}" stroke="#FF4438" stroke-width="6" fill="none" stroke-linecap="round"/>`;
+      if (k > .9) svg += `<circle cx="${x}" cy="800" r="12" fill="#FF4438"/>`; });
+    $('p-arrows').innerHTML = svg;
+  },
+  setup(u) {
+    set($('su-h'), out(u / .4), 0, 30 * (1 - out(u / .4)));
+    const P = 'Install or upgrade phone-harness to the latest stable version with uv using Python 3.12, register the skill from `phone-harness skill`, then read onboarding.md and walk me through it.';
+    const n = Math.floor(clamp((u - .3) / 1.3) * P.length); $('su-type').textContent = P.slice(0, n) + (n < P.length ? '▌' : '');
+    let [o, s] = pop(u, .15, .4); set($('su-prompt'), o, 0, 0, s);
+    const cs = $('su-list').children;
+    for (let i = 0; i < 3; i++) { const a = SU_AT(i) - .35, [o2, s2] = pop(u, a, .35); cs[i].className = 'card chk' + (u >= SU_AT(i) ? ' done' : ''); set(cs[i], o2, 40 * (1 - o2), 0, s2);
+      const b = cs[i].querySelector('.b'); b.style.transform = `scale(${u >= SU_AT(i) ? .8 + .2 * back((u - SU_AT(i)) / .3) : 1})`; }
+    set($('su-flow'), out((u - SU_AT(2) - .4) / .45), 0, 30 * (1 - out((u - SU_AT(2) - .4) / .45)));
+  },
+  cta(u) {
+    let [o, s] = pop(u, 0, .45); set($('c-mark'), o, 0, 0, s * (1 + .03 * Math.sin(u * 4)));
+    set($('c-h'), out((u - .25) / .4), 0, 25 * (1 - out((u - .25) / .4)));
+    [o, s] = pop(u, .5, .4);
+    const word = 'میخوام', n = Math.floor(clamp((u - .8) / .95) * (word.length + .99));
+    $('c-type').textContent = word.slice(0, n) + ((Math.floor(u * 2.4) % 2 || n < word.length) ? '|' : '');
+    set($('c-box'), o, 0, 0, s * (1 + .035 * Math.sin(u * 6) * clamp(u - 1.9)));
+    if (u > 1.9 && u < 2.2) SHAKE = 7 * (1 - (u - 1.9) / .3);
+    set($('c-say'), out((u - 1.9) / .35), 0, 20 * (1 - out((u - 1.9) / .35)), .9 + .1 * back((u - 1.9) / .4));
+    set($('c-say2'), out((u - 2.2) / .35), 0, 15 * (1 - out((u - 2.2) / .35)));
+    set($('c-repo'), out((u - 2.6) / .4));
+  },
+};
+window.ready = (async () => { await document.fonts.ready; mountLogo(); window.CUES = cues(); return true; })();
+</script>
+</body>
+</html>
